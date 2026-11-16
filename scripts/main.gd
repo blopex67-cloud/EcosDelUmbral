@@ -73,21 +73,77 @@ func _build_world() -> void:
 	add_child(env_node)
 	# Texturas 1K con mapas normales, comprimidas en JPG para un APK ligero.
 	floor_mat = _texture_material("res://assets/textures/floor_checker.jpg", "res://assets/textures/floor_checker_normal.jpg", 0.92)
-	floor_mat.uv1_scale = Vector3(12.0,12.0,1.0)
+	floor_mat.uv1_scale = Vector3(18.0,18.0,1.0)
 	wall_mat = _texture_material("res://assets/textures/wall_albedo.jpg", "res://assets/textures/wall_normal.jpg", 0.94)
 	wall_mat.uv1_scale = Vector3(10,4,1)
 	wood_mat = _texture_material("res://assets/textures/wood_albedo.jpg", "res://assets/textures/wood_normal.jpg", 0.68)
 	wood_mat.uv1_scale = Vector3(3,3,1)
 	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
-	var floor_mesh := _solid_box(Vector3(0, -0.3, 0), Vector3(48, 0.6, 44), Color.WHITE)
+	var floor_mesh := _solid_box(Vector3(-10, -0.3, -8), Vector3(112, 0.6, 60), Color.WHITE)
 	floor_mesh.material_override = floor_mat
-	_solid_box(Vector3(0, 5.1, 0), Vector3(48, 0.5, 44), Color(0.13, 0.10, 0.075), false)
-	for wall in [
-		_solid_box(Vector3(0, 2.3, -22), Vector3(48, 4.6, 0.5), Color.WHITE),
-		_solid_box(Vector3(0, 2.3, 22), Vector3(48, 4.6, 0.5), Color.WHITE),
-		_solid_box(Vector3(-24, 2.3, 0), Vector3(0.5, 4.6, 44), Color.WHITE),
-		_solid_box(Vector3(24, 2.3, 0), Vector3(0.5, 4.6, 44), Color.WHITE)]:
-		wall.material_override = wall_mat
+	_solid_box(Vector3(-10, 5.1, -8), Vector3(112, 0.5, 60), Color(0.13, 0.10, 0.075), false)
+	# Openings connect the dining room to three substantial walkable corridors.
+	# North opening, 6 m wide, aligned with an old tiled service tunnel.
+	for segment in [
+		_solid_box(Vector3(-19,2.3,-22),Vector3(10,4.6,0.5),Color.WHITE),
+		_solid_box(Vector3(16,2.3,-22),Vector3(32,4.6,0.5),Color.WHITE),
+		_solid_box(Vector3(-8,2.3,22),Vector3(64,4.6,0.5),Color.WHITE),
+		_solid_box(Vector3(-24,2.3,-13),Vector3(0.5,4.6,18),Color.WHITE),
+		_solid_box(Vector3(-24,2.3,14),Vector3(0.5,4.6,16),Color.WHITE),
+		_solid_box(Vector3(24,2.3,-13),Vector3(0.5,4.6,18),Color.WHITE),
+		_solid_box(Vector3(24,2.3,14),Vector3(0.5,4.6,16),Color.WHITE),
+		_solid_box(Vector3(-64,2.3,0),Vector3(0.5,4.6,44),Color.WHITE),
+		_solid_box(Vector3(-10,2.3,-38),Vector3(112,4.6,0.5),Color.WHITE)]:
+		segment.material_override = wall_mat
+	# Three connected walkable corridors branch off the dining room through visible doorways.
+	# Main west hall: first section opens directly from the dining room, then continues to an old service wing.
+	for segment in [
+		_solid_box(Vector3(-32,2.2,-2),Vector3(16,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(-32,2.2,6),Vector3(16,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(-52,2.2,-2),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(-52,2.2,6),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(-64,2.2,2),Vector3(0.42,4.4,8),Color.WHITE),
+		# northern branch connects through a 6m doorway in the west hall wall.
+		_solid_box(Vector3(-52,2.2,-22),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(-52,2.2,-2),Vector3(8.8,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(-42.6,2.2,-2),Vector3(2.8,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(-64,2.2,-12),Vector3(0.42,4.4,20),Color.WHITE)]:
+		segment.material_override = wall_mat
+	# New east service corridor opens from the dining room; a second side doorway returns to the hall.
+	for segment in [
+		_solid_box(Vector3(36,2.2,-4),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(36,2.2,4),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(48,2.2,0),Vector3(0.42,4.4,8),Color.WHITE),
+		_solid_box(Vector3(36,2.2,3.5),Vector3(0.42,4.4,1.0),Color.WHITE)]:
+		segment.material_override = wall_mat
+	# Warm ceiling ribs, rounded pipes and alcove doors give the additional corridor a distinct look.
+	for x in [27.0,33.0,39.0,45.0]:
+		_add_box_child(self,Vector3(x,4.25,0),Vector3(0.18,0.20,7.5),Color(0.24,0.20,0.17))
+		_add_led_strip(Vector3(x,4.05,0),Vector3(0.9,0.07,0.16),Color(0.85,0.49,0.28))
+	_add_pipe_run(Vector3(36,3.72,-3.2),Vector3(22,0.14,0.14),Color(0.31,0.34,0.34))
+	_add_pipe_run(Vector3(36,3.72,3.2),Vector3(22,0.14,0.14),Color(0.31,0.34,0.34))
+	for x in [30.0,42.0]:
+		_add_box_child(self,Vector3(x,1.75,3.68),Vector3(1.55,2.45,0.08),Color(0.16,0.13,0.11))
+		_add_box_child(self,Vector3(x,1.75,3.62),Vector3(1.28,2.17,0.06),Color(0.37,0.27,0.20))
+	# Ceiling ribs, visible warm fixtures and wall-base wear break up long straight sightlines.
+	for x in [-60.0,-54.0,-48.0,-42.0,-36.0,-30.0]:
+		_add_box_child(self,Vector3(x,4.25,2),Vector3(0.18,0.20,7.4),Color(0.24,0.20,0.17))
+		_add_led_strip(Vector3(x,4.05,2),Vector3(0.9,0.07,0.16),Color(0.88,0.55,0.34))
+	for z in [-8.0,-14.0,-20.0]:
+		_add_box_child(self,Vector3(-52,4.25,z),Vector3(23.5,0.20,0.18),Color(0.24,0.20,0.17))
+		_add_led_strip(Vector3(-52,4.04,z),Vector3(1.0,0.07,0.18),Color(0.80,0.51,0.30))
+	# A recessed utility alcove and service doors provide recognizable landmarks along the route.
+	for x in [-60.0,-52.0,-44.0]:
+		_add_box_child(self,Vector3(x,1.8,5.70),Vector3(1.45,2.5,0.08),Color(0.16,0.13,0.11))
+		_add_box_child(self,Vector3(x,1.8,5.64),Vector3(1.18,2.22,0.06),Color(0.37,0.27,0.20))
+		_add_box_child(self,Vector3(x+0.42,1.8,5.57),Vector3(0.05,0.16,0.06),Color(0.82,0.60,0.22))
+	# Rounded overhead pipes and floor cable channels add shape variation and a less blocky silhouette.
+	_add_pipe_run(Vector3(-52,3.76,-0.8),Vector3(24,0.14,0.14),Color(0.31,0.34,0.34))
+	_add_pipe_run(Vector3(-52,3.54,-0.8),Vector3(24,0.08,0.08),Color(0.20,0.24,0.25))
+	_add_pipe_run(Vector3(-52,3.76,4.8),Vector3(24,0.14,0.14),Color(0.31,0.34,0.34))
+	_add_pipe_run(Vector3(-52,3.54,4.8),Vector3(24,0.08,0.08),Color(0.20,0.24,0.25))
+	for x in [-60.0,-52.0,-44.0]:
+		_add_box_child(self,Vector3(x,0.08,2),Vector3(0.15,0.16,7.2),Color(0.30,0.25,0.20))
 	# Mostrador, escenario y cabinas decorativas; el comedor queda transitable.
 	var counter := _solid_box(Vector3(0, 1.2, -10.2), Vector3(8, 2.4, 1.3), Color.WHITE, true, 2)
 	counter.material_override = wood_mat
@@ -102,10 +158,16 @@ func _build_world() -> void:
 		_solid_box(p + Vector3(0,0.73,0),Vector3(2.94,0.42,1.90),Color(0.68,0.66,0.59),false)
 		for dx in [-1.40,1.40]:
 			_solid_box(p+Vector3(dx,0.55,0),Vector3(0.055,0.72,1.92),Color(0.78,0.76,0.69),false)
+		for lx in [-1.28,1.28]:
+			for lz in [-0.78,0.78]:
+				_add_cylinder(p+Vector3(lx,0.42,lz),0.075,0.84,Color(0.24,0.21,0.18),12)
 		for sx in [-1.0, 1.0]:
 			var chair_pos: Vector3 = p + Vector3(sx*1.45,0.48,0)
-			_solid_box(chair_pos, Vector3(0.58,0.95,0.68), Color(0.24,0.055,0.05), true, 2)
-			_solid_box(chair_pos+Vector3(0,0.68,0.28),Vector3(0.58,0.62,0.12),Color(0.28,0.065,0.055),true,2)
+			_add_cylinder(chair_pos+Vector3(0,0.08,0),0.34,0.16,Color(0.27,0.055,0.05),20)
+			_add_sphere(self,chair_pos+Vector3(0,0.67,0.28),Vector3(0.29,0.34,0.09),Color(0.32,0.07,0.06))
+			for lx in [-0.23,0.23]:
+				for lz in [-0.23,0.23]:
+					_add_cylinder(chair_pos+Vector3(lx,-0.24,lz),0.035,0.48,Color(0.22,0.19,0.16),10)
 	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
 	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065),true,2)
 	stage.material_override = wood_mat
@@ -194,8 +256,8 @@ func _add_checker_band(center: Vector3, size: Vector3, count: int, horizontal: b
 
 func _add_balloon_cluster(origin: Vector3) -> void:
 	var sphere := SphereMesh.new()
-	sphere.radial_segments = 10
-	sphere.rings = 6
+	sphere.radial_segments = 20
+	sphere.rings = 12
 	sphere.radius = 0.34
 	sphere.height = 0.78
 	var multi := MultiMesh.new()
@@ -723,6 +785,33 @@ func _caught_player() -> void:
 	restart.anchor_left = 0.5; restart.anchor_right = 0.5
 	restart.anchor_top = 0.52; restart.anchor_bottom = 0.52
 	restart.pressed.connect(func(): get_tree().reload_current_scene())
+
+func _add_cylinder(pos: Vector3, radius: float, height: float, color: Color, segments: int = 16) -> void:
+	var mesh := MeshInstance3D.new()
+	var cylinder := CylinderMesh.new()
+	cylinder.top_radius = radius
+	cylinder.bottom_radius = radius
+	cylinder.height = height
+	cylinder.radial_segments = segments
+	cylinder.rings = 2
+	mesh.mesh = cylinder
+	mesh.position = pos
+	mesh.material_override = _material(color)
+	add_child(mesh)
+
+func _add_pipe_run(pos: Vector3, size: Vector3, color: Color) -> void:
+	var mesh := MeshInstance3D.new()
+	var pipe := CylinderMesh.new()
+	pipe.top_radius = size.y * 0.5
+	pipe.bottom_radius = size.y * 0.5
+	pipe.height = size.x
+	pipe.radial_segments = 32
+	pipe.rings = 2
+	mesh.mesh = pipe
+	mesh.position = pos
+	mesh.rotation.z = PI * 0.5
+	mesh.material_override = _material(color)
+	add_child(mesh)
 
 func _solid_box(pos: Vector3, size: Vector3, color: Color, collides: bool = true, collision_layer: int = 1) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
