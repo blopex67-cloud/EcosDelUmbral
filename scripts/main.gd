@@ -54,14 +54,14 @@ func _build_world() -> void:
 	wall_mat = _texture_material("res://assets/textures/wall_plaster.jpg", "res://assets/textures/wall_plaster_normal.jpg", 0.94)
 	wood_mat = _texture_material("res://assets/textures/oak_veneer.jpg", "res://assets/textures/oak_veneer_normal.jpg", 0.76)
 	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
-	var floor_mesh := _solid_box(Vector3(0, -0.3, 0), Vector3(30, 0.6, 26), Color.WHITE)
+	var floor_mesh := _solid_box(Vector3(0, -0.3, 0), Vector3(48, 0.6, 44), Color.WHITE)
 	floor_mesh.material_override = floor_mat
-	_solid_box(Vector3(0, 5.1, 0), Vector3(30, 0.5, 26), Color(0.075, 0.063, 0.055), false)
+	_solid_box(Vector3(0, 5.1, 0), Vector3(48, 0.5, 44), Color(0.075, 0.063, 0.055), false)
 	for wall in [
-		_solid_box(Vector3(0, 2.3, -13), Vector3(30, 4.6, 0.5), Color.WHITE),
-		_solid_box(Vector3(0, 2.3, 13), Vector3(30, 4.6, 0.5), Color.WHITE),
-		_solid_box(Vector3(-15, 2.3, 0), Vector3(0.5, 4.6, 26), Color.WHITE),
-		_solid_box(Vector3(15, 2.3, 0), Vector3(0.5, 4.6, 26), Color.WHITE)]:
+		_solid_box(Vector3(0, 2.3, -22), Vector3(48, 4.6, 0.5), Color.WHITE),
+		_solid_box(Vector3(0, 2.3, 22), Vector3(48, 4.6, 0.5), Color.WHITE),
+		_solid_box(Vector3(-24, 2.3, 0), Vector3(0.5, 4.6, 44), Color.WHITE),
+		_solid_box(Vector3(24, 2.3, 0), Vector3(0.5, 4.6, 44), Color.WHITE)]:
 		wall.material_override = wall_mat
 	# Mostrador, escenario y cabinas decorativas; el comedor queda transitable.
 	var counter := _solid_box(Vector3(0, 1.2, -10.2), Vector3(8, 2.4, 1.3), Color.WHITE)
@@ -74,20 +74,42 @@ func _build_world() -> void:
 		tabletop.material_override = wood_mat
 		for sx in [-1.0, 1.0]:
 			_solid_box(p + Vector3(sx*2.0,0.48,0), Vector3(0.55,0.95,0.65), Color(0.32,0.085,0.07))
+	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
+	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065))
+	stage.material_override = wood_mat
+	for x in [-7.0,-3.5,0.0,3.5,7.0]:
+		_solid_box(Vector3(x,2.9,-20.7),Vector3(0.22,4.0,0.18),Color(0.28,0.08,0.075),false)
+	# Cocina trasera con aperturas laterales.
+	_solid_box(Vector3(-16,2.1,-12.5),Vector3(16,4.2,0.42),Color(0.28,0.24,0.20))
+	_solid_box(Vector3(16,2.1,-12.5),Vector3(16,4.2,0.42),Color(0.28,0.24,0.20))
+	for x in [-20.0,-14.0,14.0,20.0]:
+		var prep := _solid_box(Vector3(x,1,-17),Vector3(4.2,1.8,1.2),Color(0.34,0.37,0.39))
+		_solid_box(Vector3(x,2.05,-17),Vector3(4.25,0.12,1.25),Color(0.58,0.58,0.53),false)
+		_solid_box(Vector3(x,2.2,-20),Vector3(3.2,0.16,0.45),Color(0.30,0.32,0.33))
+	# Pasillo de servicio y cuartos laterales con paso desde el comedor.
+	_solid_box(Vector3(18.2,2.1,3.5),Vector3(0.4,4.2,23),Color(0.32,0.27,0.24))
+	_solid_box(Vector3(21,2.1,-8),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
+	_solid_box(Vector3(21,2.1,4),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
+	_solid_box(Vector3(21,2.1,-1.5),Vector3(0.4,4.2,8.5),Color(0.32,0.27,0.24))
+	for z in [-8.0,-3.0,2.0,7.0]:
+		_solid_box(Vector3(-21.3,1,z),Vector3(1.3,2,1.5),Color(0.10,0.13,0.18))
+		_add_led_strip(Vector3(-21.3,1.62,z-0.76),Vector3(0.9,0.35,0.05),Color(0.05,0.7,1.0))
+	_add_led_strip(Vector3(0,4.25,-21.55),Vector3(14,0.16,0.08),Color(1.0,0.12,0.08))
+	_add_led_strip(Vector3(0,4.1,-12.15),Vector3(12,0.12,0.08),Color(0.04,0.72,1.0))
 	# Luces cálidas dispersas y focos de escenario.
-	for p in [Vector3(-10,3.8,-6), Vector3(0,4,-7), Vector3(10,3.8,-6), Vector3(-10,3.5,3), Vector3(0,3.7,5), Vector3(10,3.5,3)]:
+	for p in [Vector3(-18,3.8,-7),Vector3(-9,4,-7),Vector3(0,4,-7),Vector3(9,4,-7),Vector3(18,3.8,-7),Vector3(-18,3.8,3),Vector3(-9,3.7,5),Vector3(0,3.7,5),Vector3(9,3.7,5),Vector3(18,3.7,5),Vector3(-17,3.6,-17),Vector3(0,3.6,-17),Vector3(17,3.6,-17),Vector3(21,3.4,12)]:
 		var light := OmniLight3D.new()
 		light.position = p
 		light.light_color = Color(1.0,0.63,0.32)
-		light.light_energy = 0.78
-		light.omni_range = 10.0
-		light.shadow_enabled = false
+		light.light_energy = 0.88
+		light.omni_range = 11.0
+		light.shadow_enabled = p == Vector3(0,4,-7) or p == Vector3(0,3.7,5)
 		add_child(light)
 	# Neon strips with emissive material + subtle low-cost coloured light.
-	_add_led_strip(Vector3(0,4.25,-12.55), Vector3(22,0.12,0.07), Color(0.05,0.88,1.0))
-	_add_led_strip(Vector3(0,3.95,12.55), Vector3(18,0.10,0.06), Color(1.0,0.08,0.36))
-	_add_led_strip(Vector3(-14.55,3.5,0), Vector3(0.07,0.10,18), Color(0.36,0.12,1.0))
-	_add_led_strip(Vector3(14.55,3.5,0), Vector3(0.07,0.10,18), Color(0.05,0.82,0.62))
+	_add_led_strip(Vector3(0,4.25,-12.55), Vector3(40,0.12,0.07), Color(0.05,0.88,1.0))
+	_add_led_strip(Vector3(0,3.95,12.55), Vector3(36,0.10,0.06), Color(1.0,0.08,0.36))
+	_add_led_strip(Vector3(-23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.36,0.12,1.0))
+	_add_led_strip(Vector3(23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.05,0.82,0.62))
 	_add_neon_light(Vector3(0,3.8,-11.7), Color(0.03,0.56,1.0), 0.7, 6.5)
 	_add_neon_light(Vector3(-12.8,3.1,0), Color(0.32,0.07,1.0), 0.5, 6.0)
 	_add_neon_light(Vector3(12.8,3.1,0), Color(0.03,0.7,0.45), 0.5, 6.0)
@@ -157,45 +179,32 @@ func _build_player() -> void:
 	add_child(player)
 
 func _build_animatronic() -> void:
-	# Rigged animated CC0 robot model with 20 animation clips.
+	# The Mimic DLC GLB with 32.7k triangles and native clips.
 	animatronic = CharacterBody3D.new()
-	animatronic.name = "Animatronic_Rigged_Robot"
-	animatronic.position = Vector3(0,0,-8)
+	animatronic.name = "The_Mimic_DLC"
+	animatronic.position = Vector3(0,0,-10)
 	var shape := CapsuleShape3D.new()
-	shape.radius = 0.38
-	shape.height = 1.68
+	shape.radius = 0.52
+	shape.height = 2.55
 	var collider := CollisionShape3D.new()
 	collider.shape = shape
-	collider.position.y = 0.84
+	collider.position.y = 1.28
 	animatronic.add_child(collider)
-	var packed := load("res://assets/models/animated_robot.glb") as PackedScene
+	var packed := load("res://assets/models/the_mimic_dlc.glb") as PackedScene
 	if packed:
 		var model := packed.instantiate() as Node3D
-		model.name = "RiggedAnimatedRobot"
+		model.name = "TheMimicDLC_32kTriangles"
 		model.position.y = 0.06
-		model.scale = Vector3.ONE * 1.15
+		model.scale = Vector3.ONE * 0.92
 		animatronic.add_child(model)
-		_apply_robot_animatronic_material(model)
 		anim_player = _find_animation_player(model)
-		if anim_player and anim_player.has_animation("Idle-loop"):
-			anim_player.play("Idle-loop")
+		if anim_player:
+			var idle_clip := _find_animation_name(anim_player,"Idle")
+			if idle_clip != "": anim_player.play(idle_clip)
 	else:
-		push_warning("Animated GLB unavailable; placeholder fallback used.")
+		push_warning("The Mimic GLB unavailable; placeholder fallback used.")
 		_add_sphere(animatronic,Vector3(0,0.9,0),Vector3(0.42,0.65,0.35),Color(0.26,0.12,0.11))
 	add_child(animatronic)
-
-func _apply_robot_animatronic_material(node: Node) -> void:
-	if node is MeshInstance3D:
-		var mesh_instance := node as MeshInstance3D
-		for surface in range(mesh_instance.mesh.get_surface_count()):
-			var source := mesh_instance.get_active_material(surface)
-			if source is StandardMaterial3D:
-				var mat := (source as StandardMaterial3D).duplicate() as StandardMaterial3D
-				mat.albedo_color = Color(0.76,0.44,0.40,1.0)
-				mat.roughness = 0.62
-				mesh_instance.set_surface_override_material(surface,mat)
-	for child in node.get_children():
-		_apply_robot_animatronic_material(child)
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
@@ -205,6 +214,11 @@ func _find_animation_player(node: Node) -> AnimationPlayer:
 		if result:
 			return result
 	return null
+
+func _find_animation_name(player_node: AnimationPlayer, fragment: String) -> String:
+	for clip in player_node.get_animation_list():
+		if clip.contains(fragment): return clip
+	return ""
 
 func _build_hud() -> void:
 	hud_layer = CanvasLayer.new()
@@ -318,11 +332,11 @@ func _input(event: InputEvent) -> void:
 	if caught: return
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			if event.position.x < get_viewport().get_visible_rect().size.x * 0.43 and event.position.y > get_viewport().get_visible_rect().size.y * 0.48:
+			if event.position.x < get_viewport().get_visible_rect().size.x * 0.50 and event.position.y > get_viewport().get_visible_rect().size.y * 0.40 and touch_stick_id == -1:
 				touch_stick_id = event.index
 				stick_center = event.position
 				stick_vector = Vector2.ZERO
-			else:
+			elif touch_look_id == -1:
 				touch_look_id = event.index
 				last_look_pos = event.position
 		else:
@@ -376,9 +390,9 @@ func _process(delta: float) -> void:
 		animatronic.move_and_slide()
 		animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
 		if anim_player:
-			var wanted := "Sprint-loop" if distance < 6.0 else "Run-loop"
-			if anim_player.has_animation(wanted) and anim_player.current_animation != wanted:
-				anim_player.play(wanted,0.18)
+			var wanted := _find_animation_name(anim_player,"RunA")
+			if distance > 8.0: wanted = _find_animation_name(anim_player,"Walk_SK")
+			if wanted != "" and anim_player.current_animation != wanted: anim_player.play(wanted,0.18)
 			anim_player.speed_scale = 1.0 + minf(elapsed/150.0,0.35)
 	stomp_timer -= delta
 	if distance < 12.0 and stomp_timer <= 0.0:
@@ -407,6 +421,9 @@ func _caught_player() -> void:
 	var to_player := player.global_position - animatronic.global_position
 	animatronic.global_position = player.global_position - to_player.normalized() * 0.8
 	animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
+	if anim_player:
+		var scare := _find_animation_name(anim_player,"JumpscareFrontA")
+		if scare != "": anim_player.play(scare,0.08)
 	var c := overlay.color
 	c.a = 0.72
 	overlay.color = c
