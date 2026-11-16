@@ -47,6 +47,9 @@ func _build_world() -> void:
 	env.ambient_light_color = Color(0.40, 0.37, 0.34)
 	env.ambient_light_energy = 0.82
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.glow_enabled = true
+	env.glow_intensity = 0.38
+	env.glow_bloom = 0.08
 	env_node.environment = env
 	add_child(env_node)
 	# Texturas 1K con mapas normales, comprimidas en JPG para un APK ligero.
@@ -332,13 +335,21 @@ func _input(event: InputEvent) -> void:
 	if caught: return
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			if event.position.x < get_viewport().get_visible_rect().size.x * 0.50 and event.position.y > get_viewport().get_visible_rect().size.y * 0.40 and touch_stick_id == -1:
-				touch_stick_id = event.index
-				stick_center = event.position
-				stick_vector = Vector2.ZERO
-			elif touch_look_id == -1:
-				touch_look_id = event.index
-				last_look_pos = event.position
+			var viewport_size := get_viewport().get_visible_rect().size
+			var left_control_zone := event.position.x < viewport_size.x * 0.50 and event.position.y > viewport_size.y * 0.40
+			if left_control_zone:
+				# Solo el primer dedo de la zona izquierda captura el joystick.
+				# Un segundo dedo allí no roba el stick ni bloquea el movimiento.
+				if touch_stick_id == -1:
+					touch_stick_id = event.index
+					stick_center = event.position
+					stick_vector = Vector2.ZERO
+			else:
+				# El dedo derecho puede girar la cámara mientras el stick sigue pulsado.
+				var bottom_right_buttons := event.position.x > viewport_size.x * 0.70 and event.position.y > viewport_size.y * 0.78
+				if touch_look_id == -1 and not bottom_right_buttons:
+					touch_look_id = event.index
+					last_look_pos = event.position
 		else:
 			if event.index == touch_stick_id:
 				touch_stick_id = -1
@@ -400,7 +411,7 @@ func _process(delta: float) -> void:
 			stomp_player.pitch_scale = clampf(1.05 - distance * 0.018,0.82,1.02)
 			stomp_player.play()
 		stomp_timer = clampf(distance * 0.35,1.8,3.4)
-	if distance < 1.45:
+	if distance < 1.7:
 		_caught_player()
 	threat_label.text = "¡TE ESTÁ BUSCANDO!" if distance < 8.0 else "SE OYEN PASOS LEJANOS"
 	hud.text = "PIZZERÍA CERRADA  •  %02d:%02d AM" % [12 + int(elapsed/60.0)%6, int(elapsed)%60]
@@ -419,7 +430,7 @@ func _caught_player() -> void:
 	stomp_player.stop()
 	ambience.stop()
 	var to_player := player.global_position - animatronic.global_position
-	animatronic.global_position = player.global_position - to_player.normalized() * 0.8
+	animatronic.global_position = player.global_position - to_player.normalized() * 0.85
 	animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
 	if anim_player:
 		var scare := _find_animation_name(anim_player,"JumpscareFrontA")
