@@ -16,6 +16,10 @@ Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 pa
 - Efectos de Mixkit bajo su [Free SFX License](https://mixkit.co/license/#sfxFree). Los IDs y atribuciones están en `assets/models/THE_MIMIC_ATTRIBUTION.txt` y `assets/audio/SOUND_CREDITS.txt`.
 - Fan game no oficial; FNAF y sus personajes pertenecen a sus titulares.
 
+## Prueba y exportación sin builds innecesarios
+
+Los cambios ejecutan `Godot project tests` automáticamente: importa recursos y hace un smoke test de la escena, sin crear APK. Después de revisar el ZIP/proyecto y dar aprobación, se lanza manualmente `Export Android APK (manual after visual approval)`. Pasos completos: [TEST_AND_APK_FLOW.md](TEST_AND_APK_FLOW.md).
+
 ## Construir APK
 
 GitHub Actions ejecuta el workflow `.github/workflows/android-apk.yml` al subir cambios a `main`, o manualmente desde Actions. Produce un APK debug arm64 descargable como artefacto. Es de depuración, no para Play Store.
