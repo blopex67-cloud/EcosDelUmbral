@@ -279,8 +279,8 @@ func _input(event: InputEvent) -> void:
 		if event.index == touch_stick_id:
 			stick_vector = ((event.position - stick_center) / stick_radius).limit_length(1.0)
 		elif event.index == touch_look_id:
-			var delta := event.position - last_look_pos
-			look_delta += delta
+			var look_change: Vector2 = event.position - last_look_pos
+			look_delta += look_change
 			last_look_pos = event.position
 
 func _process(delta: float) -> void:
