@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 30
     env:
       GODOT_VERSION: '4.3'
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -28,12 +30,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK packages
-        uses: android-actions/setup-android@v3
       - name: Install SDK components
         run: |
-          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0" "cmdline-tools;latest"
           yes | sdkmanager --licenses >/dev/null
+          sdkmanager --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Download Godot and Android export templates
         shell: bash
