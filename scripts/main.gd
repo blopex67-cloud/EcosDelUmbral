@@ -67,18 +67,18 @@ func _build_world() -> void:
 		_solid_box(Vector3(24, 2.3, 0), Vector3(0.5, 4.6, 44), Color.WHITE)]:
 		wall.material_override = wall_mat
 	# Mostrador, escenario y cabinas decorativas; el comedor queda transitable.
-	var counter := _solid_box(Vector3(0, 1.2, -10.2), Vector3(8, 2.4, 1.3), Color.WHITE)
+	var counter := _solid_box(Vector3(0, 1.2, -10.2), Vector3(8, 2.4, 1.3), Color.WHITE, true, 2)
 	counter.material_override = wood_mat
 	_solid_box(Vector3(-9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	_solid_box(Vector3(9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	# Mesas, asientos y franjas de color con colisión baja y sencilla.
 	for p in [Vector3(-8,0,-3), Vector3(8,0,-3), Vector3(-8,0,4), Vector3(8,0,4), Vector3(0,0,3)]:
-		var tabletop := _solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color.WHITE)
+		var tabletop := _solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color.WHITE, true, 2)
 		tabletop.material_override = wood_mat
 		for sx in [-1.0, 1.0]:
-			_solid_box(p + Vector3(sx*2.0,0.48,0), Vector3(0.55,0.95,0.65), Color(0.32,0.085,0.07))
+			_solid_box(p + Vector3(sx*2.0,0.48,0), Vector3(0.55,0.95,0.65), Color(0.32,0.085,0.07), true, 2)
 	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
-	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065))
+	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065),true,2)
 	stage.material_override = wood_mat
 	for x in [-7.0,-3.5,0.0,3.5,7.0]:
 		_solid_box(Vector3(x,2.9,-20.7),Vector3(0.22,4.0,0.18),Color(0.28,0.08,0.075),false)
@@ -86,16 +86,16 @@ func _build_world() -> void:
 	_solid_box(Vector3(-16,2.1,-12.5),Vector3(16,4.2,0.42),Color(0.28,0.24,0.20))
 	_solid_box(Vector3(16,2.1,-12.5),Vector3(16,4.2,0.42),Color(0.28,0.24,0.20))
 	for x in [-20.0,-14.0,14.0,20.0]:
-		var prep := _solid_box(Vector3(x,1,-17),Vector3(4.2,1.8,1.2),Color(0.34,0.37,0.39))
+		var prep := _solid_box(Vector3(x,1,-17),Vector3(4.2,1.8,1.2),Color(0.34,0.37,0.39),true,2)
 		_solid_box(Vector3(x,2.05,-17),Vector3(4.25,0.12,1.25),Color(0.58,0.58,0.53),false)
-		_solid_box(Vector3(x,2.2,-20),Vector3(3.2,0.16,0.45),Color(0.30,0.32,0.33))
+		_solid_box(Vector3(x,2.2,-20),Vector3(3.2,0.16,0.45),Color(0.30,0.32,0.33),true,2)
 	# Pasillo de servicio y cuartos laterales con paso desde el comedor.
 	_solid_box(Vector3(18.2,2.1,3.5),Vector3(0.4,4.2,23),Color(0.32,0.27,0.24))
 	_solid_box(Vector3(21,2.1,-8),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
 	_solid_box(Vector3(21,2.1,4),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
 	_solid_box(Vector3(21,2.1,-1.5),Vector3(0.4,4.2,8.5),Color(0.32,0.27,0.24))
 	for z in [-8.0,-3.0,2.0,7.0]:
-		_solid_box(Vector3(-21.3,1,z),Vector3(1.3,2,1.5),Color(0.10,0.13,0.18))
+		_solid_box(Vector3(-21.3,1,z),Vector3(1.3,2,1.5),Color(0.10,0.13,0.18),true,2)
 		_add_led_strip(Vector3(-21.3,1.62,z-0.76),Vector3(0.9,0.35,0.05),Color(0.05,0.7,1.0))
 	_add_led_strip(Vector3(0,4.25,-21.55),Vector3(14,0.16,0.08),Color(1.0,0.12,0.08))
 	_add_led_strip(Vector3(0,4.1,-12.15),Vector3(12,0.12,0.08),Color(0.04,0.72,1.0))
@@ -154,6 +154,7 @@ func _texture_material(path: String, normal_path: String, rough: float) -> Stand
 func _build_player() -> void:
 	player = CharacterBody3D.new()
 	player.name = "Player"
+	player.collision_mask = 3
 	player.position = Vector3(0, 0.05, 8)
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.34
@@ -185,6 +186,7 @@ func _build_animatronic() -> void:
 	# The Mimic DLC GLB with 32.7k triangles and native clips.
 	animatronic = CharacterBody3D.new()
 	animatronic.name = "The_Mimic_DLC"
+	animatronic.collision_mask = 1
 	animatronic.position = Vector3(0,0,-10)
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.52
@@ -336,7 +338,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			var viewport_size := get_viewport().get_visible_rect().size
-			var left_control_zone := event.position.x < viewport_size.x * 0.50 and event.position.y > viewport_size.y * 0.40
+			var left_control_zone: bool = event.position.x < viewport_size.x * 0.50 and event.position.y > viewport_size.y * 0.40
 			if left_control_zone:
 				# Solo el primer dedo de la zona izquierda captura el joystick.
 				# Un segundo dedo allí no roba el stick ni bloquea el movimiento.
@@ -346,7 +348,7 @@ func _input(event: InputEvent) -> void:
 					stick_vector = Vector2.ZERO
 			else:
 				# El dedo derecho puede girar la cámara mientras el stick sigue pulsado.
-				var bottom_right_buttons := event.position.x > viewport_size.x * 0.70 and event.position.y > viewport_size.y * 0.78
+				var bottom_right_buttons: bool = event.position.x > viewport_size.x * 0.70 and event.position.y > viewport_size.y * 0.78
 				if touch_look_id == -1 and not bottom_right_buttons:
 					touch_look_id = event.index
 					last_look_pos = event.position
@@ -445,7 +447,7 @@ func _caught_player() -> void:
 	restart.anchor_top = 0.52; restart.anchor_bottom = 0.52
 	restart.pressed.connect(func(): get_tree().reload_current_scene())
 
-func _solid_box(pos: Vector3, size: Vector3, color: Color, collides: bool = true) -> MeshInstance3D:
+func _solid_box(pos: Vector3, size: Vector3, color: Color, collides: bool = true, collision_layer: int = 1) -> MeshInstance3D:
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	var inst := MeshInstance3D.new()
@@ -456,6 +458,7 @@ func _solid_box(pos: Vector3, size: Vector3, color: Color, collides: bool = true
 	if collides:
 		var body := StaticBody3D.new()
 		body.position = pos
+		body.collision_layer = collision_layer
 		var shape := BoxShape3D.new()
 		shape.size = size
 		var col := CollisionShape3D.new()
