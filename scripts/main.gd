@@ -29,6 +29,9 @@ var hud_layer: CanvasLayer
 var floor_mat: StandardMaterial3D
 var wall_mat: StandardMaterial3D
 var wood_mat: StandardMaterial3D
+var stick_base: Panel
+var stick_knob: Panel
+var stick_knob_radius := 42.0
 
 func _ready() -> void:
 	print("PIZZERIA_FREE_SCENE_READY")
@@ -44,12 +47,12 @@ func _build_world() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.008, 0.009, 0.012)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.40, 0.37, 0.34)
-	env.ambient_light_energy = 0.82
+	env.ambient_light_color = Color(0.62, 0.56, 0.48)
+	env.ambient_light_energy = 0.95
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.glow_enabled = true
-	env.glow_intensity = 0.38
-	env.glow_bloom = 0.08
+	env.glow_enabled = false
+	env.glow_intensity = 0.0
+	env.glow_bloom = 0.0
 	env_node.environment = env
 	add_child(env_node)
 	# Texturas 1K con mapas normales, comprimidas en JPG para un APK ligero.
@@ -59,7 +62,7 @@ func _build_world() -> void:
 	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
 	var floor_mesh := _solid_box(Vector3(0, -0.3, 0), Vector3(48, 0.6, 44), Color.WHITE)
 	floor_mesh.material_override = floor_mat
-	_solid_box(Vector3(0, 5.1, 0), Vector3(48, 0.5, 44), Color(0.075, 0.063, 0.055), false)
+	_solid_box(Vector3(0, 5.1, 0), Vector3(48, 0.5, 44), Color(0.13, 0.10, 0.075), false)
 	for wall in [
 		_solid_box(Vector3(0, 2.3, -22), Vector3(48, 4.6, 0.5), Color.WHITE),
 		_solid_box(Vector3(0, 2.3, 22), Vector3(48, 4.6, 0.5), Color.WHITE),
@@ -72,19 +75,19 @@ func _build_world() -> void:
 	_solid_box(Vector3(-9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	_solid_box(Vector3(9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	# Mesas, asientos y franjas de color con colisión baja y sencilla.
-	for p in [Vector3(-8,0,-3), Vector3(8,0,-3), Vector3(-8,0,4), Vector3(8,0,4), Vector3(0,0,3)]:
+	for p in [Vector3(-16,0,-3), Vector3(-8,0,-3), Vector3(0,0,-3), Vector3(8,0,-3), Vector3(16,0,-3), Vector3(-16,0,6), Vector3(-8,0,6), Vector3(0,0,6), Vector3(8,0,6), Vector3(16,0,6)]:
 		var tabletop := _solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color.WHITE, true, 2)
 		tabletop.material_override = wood_mat
 		for sx in [-1.0, 1.0]:
-			_solid_box(p + Vector3(sx*2.0,0.48,0), Vector3(0.55,0.95,0.65), Color(0.32,0.085,0.07), true, 2)
+			_solid_box(p + Vector3(sx*1.45,0.48,0), Vector3(0.55,0.95,0.65), Color(0.32,0.085,0.07), true, 2)
 	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
 	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065),true,2)
 	stage.material_override = wood_mat
 	for x in [-7.0,-3.5,0.0,3.5,7.0]:
 		_solid_box(Vector3(x,2.9,-20.7),Vector3(0.22,4.0,0.18),Color(0.28,0.08,0.075),false)
 	# Cocina trasera con aperturas laterales.
-	_solid_box(Vector3(-16,2.1,-12.5),Vector3(16,4.2,0.42),Color(0.28,0.24,0.20))
-	_solid_box(Vector3(16,2.1,-12.5),Vector3(16,4.2,0.42),Color(0.28,0.24,0.20))
+	_solid_box(Vector3(-15.5,2.1,-12.5),Vector3(17,4.2,0.42),Color(0.28,0.24,0.20))
+	_solid_box(Vector3(15.5,2.1,-12.5),Vector3(17,4.2,0.42),Color(0.28,0.24,0.20))
 	for x in [-20.0,-14.0,14.0,20.0]:
 		var prep := _solid_box(Vector3(x,1,-17),Vector3(4.2,1.8,1.2),Color(0.34,0.37,0.39),true,2)
 		_solid_box(Vector3(x,2.05,-17),Vector3(4.25,0.12,1.25),Color(0.58,0.58,0.53),false)
@@ -99,23 +102,32 @@ func _build_world() -> void:
 		_add_led_strip(Vector3(-21.3,1.62,z-0.76),Vector3(0.9,0.35,0.05),Color(0.05,0.7,1.0))
 	_add_led_strip(Vector3(0,4.25,-21.55),Vector3(14,0.16,0.08),Color(1.0,0.12,0.08))
 	_add_led_strip(Vector3(0,4.1,-12.15),Vector3(12,0.12,0.08),Color(0.04,0.72,1.0))
+	# Contrasting dado rails and colored booth panels make the dining room read as a place.
+	_add_led_strip(Vector3(0,1.05,21.65),Vector3(32,0.08,0.06),Color(0.95,0.27,0.08))
+	_add_led_strip(Vector3(-23.65,1.05,0),Vector3(0.06,0.08,32),Color(0.95,0.27,0.08))
+	_add_led_strip(Vector3(23.65,1.05,0),Vector3(0.06,0.08,32),Color(0.95,0.27,0.08))
+	for x in [-17.0,-8.5,0.0,8.5,17.0]:
+		# Bright framed menu posters on walls, no extra lights/shadows.
+		_add_box_child(self,Vector3(x,2.65,21.68),Vector3(2.3,1.5,0.06),Color(0.31,0.10,0.055))
+		_add_box_child(self,Vector3(x,2.65,21.60),Vector3(2.0,1.22,0.06),Color(0.87,0.69,0.42))
+	# Distinct kitchen fixtures: oven fronts and cooler doors.
+	for x in [-20.0,-14.0,14.0,20.0]:
+		_add_box_child(self,Vector3(x,0.88,-17.63),Vector3(1.25,0.78,0.04),Color(0.10,0.12,0.14))
+		_add_led_strip(Vector3(x,1.42,-17.61),Vector3(1.0,0.035,0.03),Color(1.0,0.22,0.07))
 	# Luces cálidas dispersas y focos de escenario.
-	for p in [Vector3(-18,3.8,-7),Vector3(-9,4,-7),Vector3(0,4,-7),Vector3(9,4,-7),Vector3(18,3.8,-7),Vector3(-18,3.8,3),Vector3(-9,3.7,5),Vector3(0,3.7,5),Vector3(9,3.7,5),Vector3(18,3.7,5),Vector3(-17,3.6,-17),Vector3(0,3.6,-17),Vector3(17,3.6,-17),Vector3(21,3.4,12)]:
+	for p in [Vector3(-16,3.8,-6),Vector3(0,3.8,-6),Vector3(16,3.8,-6),Vector3(-16,3.8,8),Vector3(0,3.8,8),Vector3(16,3.8,8),Vector3(0,3.5,-17)]:
 		var light := OmniLight3D.new()
 		light.position = p
 		light.light_color = Color(1.0,0.63,0.32)
-		light.light_energy = 0.88
-		light.omni_range = 11.0
-		light.shadow_enabled = p == Vector3(0,4,-7) or p == Vector3(0,3.7,5)
+		light.light_energy = 0.68
+		light.omni_range = 14.0
+		light.shadow_enabled = false
 		add_child(light)
 	# Neon strips with emissive material + subtle low-cost coloured light.
 	_add_led_strip(Vector3(0,4.25,-12.55), Vector3(40,0.12,0.07), Color(0.05,0.88,1.0))
 	_add_led_strip(Vector3(0,3.95,12.55), Vector3(36,0.10,0.06), Color(1.0,0.08,0.36))
 	_add_led_strip(Vector3(-23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.36,0.12,1.0))
 	_add_led_strip(Vector3(23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.05,0.82,0.62))
-	_add_neon_light(Vector3(0,3.8,-11.7), Color(0.03,0.56,1.0), 0.7, 6.5)
-	_add_neon_light(Vector3(-12.8,3.1,0), Color(0.32,0.07,1.0), 0.5, 6.0)
-	_add_neon_light(Vector3(12.8,3.1,0), Color(0.03,0.7,0.45), 0.5, 6.0)
 
 func _add_led_strip(pos: Vector3, size: Vector3, color: Color) -> void:
 	var mesh := MeshInstance3D.new()
@@ -169,7 +181,7 @@ func _build_player() -> void:
 	player.add_child(pivot)
 	camera = Camera3D.new()
 	camera.current = true
-	camera.fov = 82
+	camera.fov = 88
 	pivot.add_child(camera)
 	flashlight = SpotLight3D.new()
 	flashlight.position = Vector3(0, -0.08, -0.18)
@@ -200,7 +212,8 @@ func _build_animatronic() -> void:
 		var model := packed.instantiate() as Node3D
 		model.name = "TheMimicDLC_32kTriangles"
 		model.position.y = 0.06
-		model.scale = Vector3.ONE * 0.92
+		model.scale = Vector3.ONE * 0.90
+		model.rotation.y = PI
 		animatronic.add_child(model)
 		anim_player = _find_animation_player(model)
 		if anim_player:
@@ -238,7 +251,7 @@ func _build_hud() -> void:
 	hud.anchor_right = 0.68
 	hud.anchor_top = 0.025
 	hud.anchor_bottom = 0.11
-	hud.add_theme_font_size_override("font_size", 20)
+	hud.add_theme_font_size_override("font_size", 23)
 	hud.add_theme_color_override("font_color", Color(1.0,0.89,0.68))
 	root.add_child(hud)
 	threat_label = Label.new()
@@ -247,43 +260,37 @@ func _build_hud() -> void:
 	threat_label.anchor_top = 0.025
 	threat_label.anchor_bottom = 0.11
 	threat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	threat_label.add_theme_font_size_override("font_size", 18)
+	threat_label.add_theme_font_size_override("font_size", 21)
 	threat_label.add_theme_color_override("font_color", Color(1.0,0.38,0.28))
 	root.add_child(threat_label)
-	var joystick := ColorRect.new()
-	joystick.name = "TouchStickVisual"
-	joystick.size = Vector2(136,136)
-	joystick.position = Vector2(34,-172)
-	joystick.anchor_top = 1.0
-	joystick.anchor_bottom = 1.0
-	joystick.color = Color(0.75,0.78,0.82,0.13)
-	joystick.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var stick_style := StyleBoxFlat.new()
-	stick_style.bg_color = Color(0.17,0.2,0.22,0.48)
-	stick_style.set_corner_radius_all(68)
-	stick_style.border_color = Color(0.8,0.82,0.8,0.65)
-	stick_style.set_border_width_all(2)
-	var panel := Panel.new()
-	panel.name = "StickBase"
-	panel.position = Vector2(35,-174)
-	panel.size = Vector2(132,132)
-	panel.anchor_top = 1.0
-	panel.anchor_bottom = 1.0
-	panel.add_theme_stylebox_override("panel",stick_style)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(panel)
-	var knob := Panel.new()
-	knob.name = "StickKnob"
-	knob.position = Vector2(73,-130)
-	knob.size = Vector2(56,56)
-	knob.anchor_top = 1.0
-	knob.anchor_bottom = 1.0
+	stick_radius = 104.0
+	stick_base = Panel.new()
+	stick_base.name = "JoystickBase"
+	stick_base.size = Vector2(208,208)
+	stick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var base_style := StyleBoxFlat.new()
+	base_style.bg_color = Color(0.04,0.055,0.07,0.42)
+	base_style.set_corner_radius_all(96)
+	base_style.border_color = Color(0.82,0.86,0.9,0.82)
+	base_style.set_border_width_all(3)
+	base_style.shadow_color = Color(0,0,0,0.4)
+	base_style.shadow_size = 8
+	stick_base.add_theme_stylebox_override("panel",base_style)
+	root.add_child(stick_base)
+	stick_knob = Panel.new()
+	stick_knob.name = "JoystickKnob"
+	stick_knob.size = Vector2(84,84)
+	stick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var knob_style := StyleBoxFlat.new()
-	knob_style.bg_color = Color(0.75,0.78,0.8,0.72)
-	knob_style.set_corner_radius_all(28)
-	knob.add_theme_stylebox_override("panel",knob_style)
-	knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(knob)
+	knob_style.bg_color = Color(0.83,0.87,0.9,0.9)
+	knob_style.set_corner_radius_all(42)
+	knob_style.border_color = Color(1,1,1,0.85)
+	knob_style.set_border_width_all(2)
+	stick_knob.add_theme_stylebox_override("panel",knob_style)
+	root.add_child(stick_knob)
+	var initial_size := get_viewport().get_visible_rect().size
+	stick_center = Vector2(156,initial_size.y - 156)
+	_update_stick_visual()
 	var light_button := _make_button(root,"LINTERNA",Vector2(-230,-145),Vector2(112,62))
 	light_button.anchor_left = 1.0; light_button.anchor_right = 1.0
 	light_button.pressed.connect(_toggle_flashlight)
@@ -346,6 +353,7 @@ func _input(event: InputEvent) -> void:
 					touch_stick_id = event.index
 					stick_center = event.position
 					stick_vector = Vector2.ZERO
+					_update_stick_visual()
 			else:
 				# El dedo derecho puede girar la cámara mientras el stick sigue pulsado.
 				var bottom_right_buttons: bool = event.position.x > viewport_size.x * 0.70 and event.position.y > viewport_size.y * 0.78
@@ -356,15 +364,24 @@ func _input(event: InputEvent) -> void:
 			if event.index == touch_stick_id:
 				touch_stick_id = -1
 				stick_vector = Vector2.ZERO
+				var vp := get_viewport().get_visible_rect().size
+				stick_center = Vector2(156,vp.y-156)
+				_update_stick_visual()
 			if event.index == touch_look_id:
 				touch_look_id = -1
 	elif event is InputEventScreenDrag:
 		if event.index == touch_stick_id:
 			stick_vector = ((event.position - stick_center) / stick_radius).limit_length(1.0)
+			_update_stick_visual()
 		elif event.index == touch_look_id:
 			var look_change: Vector2 = event.position - last_look_pos
 			look_delta += look_change
 			last_look_pos = event.position
+
+func _update_stick_visual() -> void:
+	if not is_instance_valid(stick_base) or not is_instance_valid(stick_knob): return
+	stick_base.position = stick_center - Vector2(104,104)
+	stick_knob.position = stick_center - Vector2(stick_knob_radius,stick_knob_radius) + stick_vector * 58.0
 
 func _process(delta: float) -> void:
 	if caught: return
