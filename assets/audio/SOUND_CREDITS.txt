@@ -1,0 +1,10 @@
+Sound effects from Mixkit under the Mixkit Free SFX License:
+https://mixkit.co/license/#sfxFree
+
+Flashlight switch: ID 2579, "Light switch sound".
+Creepy toy-like laugh: ID 2873, "Creepy little creature".
+Ambient horror sting: ID 2630, "Terror sweep of darkness".
+Distant monster growl: ID 309, "Angry dragon growl".
+Toy-like greeting: ID 2259, "Little boy saying hiya" (not official Toy character audio).
+Mimic footfall sample: ID 3046, "Golem stomp c", shortened to 0.30 s for step synchronization.
+Existing ambience: ID 2482, "Horror ambience".
