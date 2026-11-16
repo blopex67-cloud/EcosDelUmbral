@@ -39,7 +39,25 @@ jobs:
           godot --headless --editor --path . --quit
           timeout 25s godot --headless --path . --quit-after 8 2>&1 | tee smoke.log
           grep -q 'PIZZERIA_FREE_SCENE_READY' smoke.log
+          grep -q 'PIZZERIA_CORRIDORS_V2_READY' smoke.log
           if grep -E 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid get index' smoke.log; then
             echo 'Godot main scene smoke test reported a script/runtime error.'
             exit 1
           fi
+
+      - name: Package Godot project for visual review (no APK)
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -qr "$RUNNER_TEMP/EcosDelUmbral-project-review.zip" . \
+            -x './.git/*' './.godot/*' './build/*' './.import/*'
+          test -s "$RUNNER_TEMP/EcosDelUmbral-project-review.zip"
+          unzip -t "$RUNNER_TEMP/EcosDelUmbral-project-review.zip"
+
+      - name: Upload reviewable Godot project ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: EcosDelUmbral-project-review
+          path: ${{ runner.temp }}/EcosDelUmbral-project-review.zip
+          if-no-files-found: error
+          retention-days: 30
