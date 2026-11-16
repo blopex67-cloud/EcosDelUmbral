@@ -22,6 +22,7 @@ var screen_overlay: ColorRect
 var flash_timer := 0.0
 
 func _ready() -> void:
+	print("PIZZERIA_SCENE_READY")
 	_build_pizzeria()
 	_build_freddy_placeholder()
 	_build_mobile_hud()
