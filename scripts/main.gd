@@ -148,12 +148,12 @@ func _build_world() -> void:
 	trim_wood.roughness = 0.58
 	for x in [51.0,57.0,63.0,69.0]:
 		_add_pipe_run(Vector3(x,3.85,0),Vector3(7.2,0.15,0.15),Color(0.29,0.33,0.34))
-		_add_box_child(self,Vector3(x,4.22,0),Vector3(0.20,0.18,7.4),trim_wood)
+		_add_box_child(self,Vector3(x,4.22,0),Vector3(0.20,0.18,7.4),Color(0.20,0.105,0.062))
 		_add_led_strip(Vector3(x,4.02,0),Vector3(1.1,0.055,0.16),Color(0.82,0.58,0.37))
 	for z in [-8.0,8.0]:
 		for x in [54.0,62.0,70.0]:
-			_add_box_child(self,Vector3(x,1.62,z),Vector3(1.45,2.9,0.12),trim_wood)
-			_add_box_child(self,Vector3(x,1.62,z-signf(z)*0.08),Vector3(1.20,2.64,0.06),pipe_metal)
+			_add_box_child(self,Vector3(x,1.62,z),Vector3(1.45,2.9,0.12),Color(0.20,0.105,0.062))
+			_add_box_child(self,Vector3(x,1.62,z-signf(z)*0.08),Vector3(1.20,2.64,0.06),Color(0.27,0.30,0.31))
 			_add_box_child(self,Vector3(x+0.39,1.55,z-signf(z)*0.12),Vector3(0.05,0.18,0.05),Color(0.78,0.56,0.25))
 	for x in [52.0,60.0,68.0]:
 		var practical := OmniLight3D.new()
