@@ -17,6 +17,7 @@ var freddy: Node3D
 var freddy_head: Node3D
 var player_camera: Camera3D
 var hud: Label
+var hud_root: Control
 var screen_overlay: ColorRect
 var flash_timer := 0.0
 
@@ -126,10 +127,10 @@ func _build_freddy_placeholder() -> void:
 func _build_mobile_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
-	var root := Control.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_PASS
-	layer.add_child(root)
+	hud_root = Control.new()
+	hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_root.mouse_filter = Control.MOUSE_FILTER_PASS
+	layer.add_child(hud_root)
 	hud = Label.new()
 	hud.text = "12:00 AM  •  NOCHE 1  •  ENERGÍA 100%"
 	hud.anchor_left = 0.28
@@ -140,14 +141,14 @@ func _build_mobile_hud() -> void:
 	hud.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hud.add_theme_font_size_override("font_size", 22)
 	hud.add_theme_color_override("font_color", Color(0.93, 0.88, 0.72))
-	root.add_child(hud)
+	hud_root.add_child(hud)
 	var buttons := HBoxContainer.new()
 	buttons.anchor_left = 0.035
 	buttons.anchor_right = 0.965
 	buttons.anchor_top = 0.82
 	buttons.anchor_bottom = 0.97
 	buttons.add_theme_constant_override("separation", 10)
-	root.add_child(buttons)
+	hud_root.add_child(buttons)
 	_add_button(buttons, "◀ LUZ", _toggle_left_light)
 	_add_button(buttons, "◀ PUERTA", _toggle_left_door)
 	_add_button(buttons, "CÁMARAS", _toggle_cameras)
@@ -157,7 +158,7 @@ func _build_mobile_hud() -> void:
 	screen_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	screen_overlay.color = Color(0.45, 0.0, 0.0, 0.0)
 	screen_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(screen_overlay)
+	hud_root.add_child(screen_overlay)
 	var note := Label.new()
 	note.text = "SUPERVISA LOS PASILLOS. CIERRA LAS PUERTAS CUANDO SE ACERQUE."
 	note.anchor_left = 0.18
@@ -167,7 +168,7 @@ func _build_mobile_hud() -> void:
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	note.add_theme_font_size_override("font_size", 15)
 	note.add_theme_color_override("font_color", Color(0.82, 0.79, 0.68))
-	root.add_child(note)
+	hud_root.add_child(note)
 
 func _add_button(container: HBoxContainer, text: String, callback: Callable) -> void:
 	var b := Button.new()
@@ -279,7 +280,9 @@ func _process(delta: float) -> void:
 			_start_jumpscare()
 	if flash_timer > 0:
 		flash_timer -= delta
-		screen_overlay.color.a = maxf(0.0, flash_timer * 0.8)
+		var flash_color := screen_overlay.color
+		flash_color.a = maxf(0.0, flash_timer * 0.8)
+		screen_overlay.color = flash_color
 	var hour := int(night_time / 45.0) % 6
 	var energy := maxi(0, 100 - int(night_time * 0.18) - (15 if left_door_closed else 0) - (15 if right_door_closed else 0) - (8 if left_light_on or right_light_on else 0))
 	if not cameras_open:
@@ -300,4 +303,4 @@ func _start_jumpscare() -> void:
 	restart.anchor_bottom = 0.6
 	restart.add_theme_font_size_override("font_size", 24)
 	restart.pressed.connect(func(): get_tree().reload_current_scene())
-	get_child(get_child_count() - 1).add_child(restart)
+	hud_root.add_child(restart)
