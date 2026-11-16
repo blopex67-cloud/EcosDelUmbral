@@ -48,7 +48,7 @@ func _build_world() -> void:
 	env.background_color = Color(0.008, 0.009, 0.012)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.56, 0.48)
-	env.ambient_light_energy = 0.95
+	env.ambient_light_energy = 0.88
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = false
 	env.glow_intensity = 0.0
@@ -93,7 +93,8 @@ func _build_world() -> void:
 		_solid_box(Vector3(x,2.05,-17),Vector3(4.25,0.12,1.25),Color(0.58,0.58,0.53),false)
 		_solid_box(Vector3(x,2.2,-20),Vector3(3.2,0.16,0.45),Color(0.30,0.32,0.33),true,2)
 	# Pasillo de servicio y cuartos laterales con paso desde el comedor.
-	_solid_box(Vector3(18.2,2.1,3.5),Vector3(0.4,4.2,23),Color(0.32,0.27,0.24))
+	_solid_box(Vector3(18.2,2.1,-3.0),Vector3(0.4,4.2,10),Color(0.32,0.27,0.24))
+	_solid_box(Vector3(18.2,2.1,13.0),Vector3(0.4,4.2,5),Color(0.32,0.27,0.24))
 	_solid_box(Vector3(21,2.1,-8),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
 	_solid_box(Vector3(21,2.1,4),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
 	_solid_box(Vector3(21,2.1,-1.5),Vector3(0.4,4.2,8.5),Color(0.32,0.27,0.24))
@@ -102,6 +103,13 @@ func _build_world() -> void:
 		_add_led_strip(Vector3(-21.3,1.62,z-0.76),Vector3(0.9,0.35,0.05),Color(0.05,0.7,1.0))
 	_add_led_strip(Vector3(0,4.25,-21.55),Vector3(14,0.16,0.08),Color(1.0,0.12,0.08))
 	_add_led_strip(Vector3(0,4.1,-12.15),Vector3(12,0.12,0.08),Color(0.04,0.72,1.0))
+	# Repeated ceiling panels and beams define depth across the much larger room.
+	for z in [-16.0,-9.0,-2.0,5.0,12.0,19.0]:
+		_add_box_child(self,Vector3(0,4.78,z),Vector3(42,0.12,0.32),Color(0.22,0.18,0.14))
+	# Colored wall banners and booth dividers enrich the dining area with few mesh calls.
+	for x in [-18.0,-12.0,12.0,18.0]:
+		_add_box_child(self,Vector3(x,1.55,-12.1),Vector3(2.2,1.1,0.09),Color(0.40,0.075,0.06))
+		_add_led_strip(Vector3(x,2.15,-12.03),Vector3(1.75,0.035,0.03),Color(1.0,0.30,0.07))
 	# Contrasting dado rails and colored booth panels make the dining room read as a place.
 	_add_led_strip(Vector3(0,1.05,21.65),Vector3(32,0.08,0.06),Color(0.95,0.27,0.08))
 	_add_led_strip(Vector3(-23.65,1.05,0),Vector3(0.06,0.08,32),Color(0.95,0.27,0.08))
@@ -195,7 +203,7 @@ func _build_player() -> void:
 	add_child(player)
 
 func _build_animatronic() -> void:
-	# The Mimic DLC GLB with 32.7k triangles and native clips.
+	# The Mimic DLC GLB, 32.7k triangles. Source forward axis is corrected below.
 	animatronic = CharacterBody3D.new()
 	animatronic.name = "The_Mimic_DLC"
 	animatronic.collision_mask = 1
