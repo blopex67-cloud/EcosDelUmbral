@@ -4,17 +4,16 @@ Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 pa
 
 ## Qué incluye en esta etapa
 
-- Exploración libre en primera persona por una pizzería ampliada: comedor, escenario, cocina, zona de preparación, máquinas recreativas y pasillo/cuarto de servicio.
-- Android horizontal, pantalla inmersiva completa y joystick táctil. El stick permanece capturado mientras lo arrastras; un segundo dedo en la zona derecha gira la cámara a la vez. Los dedos extra no desactivan el stick.
-- Perseguidor **The Mimic DLC** con clips Idle, Walk, Run y jumpscare incluidos en el GLB.
-- Luces cálidas, LED emisivos, materiales PBR con mapas normales, mipmaps y glow moderado, equilibrados para móvil.
-- Ambiente en loop y pasos cortos, evitando reinicios de efectos que corten el audio.
+- Lobby de entrada y pizzería móvil en horizontal a pantalla completa.
+- Recorrido por comedor, escenario, cocina y pasillo de servicio, con baldosa ajedrezada, mesas con manteles, sillas, decoración de fiesta y pared envejecida.
+- The Mimic de SpiderBight con shader PBR de acabado más suave y sus animaciones Idle, Walk, Run y jumpscare. Pisadas espaciales sincronizadas a los ciclos de animación.
+- Click de linterna, ambiente en loop, transiciones de terror, gruñidos distantes, risa de criatura y una voz infantil que dice “hiya” como saludo juguetón del juguete. No se presenta como audio oficial de Toy.
 
-## Assets y créditos
+## Assets y licencias
 
-- The Mimic DLC, de [SpiderBight (ArachnoBoy / vang807)](https://sketchfab.com/3d-models/the-mimic-dlc-1dbe9b38ad8b47cc880b63d493b20884), obtenido del enlace de MediaFire proporcionado. La ficha de Sketchfab indica licencia **CC BY-NC 4.0**: requiere atribución y solo permite uso no comercial. Este fan game es gratuito y no comercial; no se debe vender, monetizar ni usar en publicidad con este modelo.
-- Piso: [Tiles 012 de ambientCG](https://ambientcg.com/view?id=Tiles012), material PBR CC0. Las texturas de pared y madera llevan mapas normales propios.
-- Audio: Mixkit Horror ambience (ID 2482) y efectos de pasos (IDs 1920 y 1417), bajo la [licencia de efectos de Mixkit](https://mixkit.co/license/#sfxFree).
+- The Mimic DLC: modelo de SpiderBight (ArachnoBoy / vang807), [Sketchfab](https://sketchfab.com/3d-models/the-mimic-dlc-1dbe9b38ad8b47cc880b63d493b20884), licencia CC BY-NC 4.0. Requiere crédito y permite solo uso no comercial. Este fan game debe mantenerse gratuito y no comercial mientras se incluya.
+- Pared Plaster001 y madera WoodFloor010 de ambientCG, CC0 1.0; piso ajedrezado generado para este proyecto.
+- Efectos de Mixkit bajo su [Free SFX License](https://mixkit.co/license/#sfxFree). Los IDs y atribuciones están en `assets/models/THE_MIMIC_ATTRIBUTION.txt` y `assets/audio/SOUND_CREDITS.txt`.
 - Fan game no oficial; FNAF y sus personajes pertenecen a sus titulares.
 
 ## Construir APK
