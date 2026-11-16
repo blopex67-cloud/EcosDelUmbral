@@ -72,6 +72,12 @@ jobs:
         run: |
           set -euo pipefail
           godot --headless --editor --path . --quit
+          # Boot the actual main scene before exporting; fail on script/runtime errors.
+          timeout 20s godot --headless --path . --quit-after 8 2>&1 | tee build-smoke.log
+          if grep -E 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid get index' build-smoke.log; then
+            echo 'Godot runtime smoke test reported an error.'
+            exit 1
+          fi
           mkdir -p build
           godot --headless --path . --export-debug "Android" build/EcosDelUmbral-debug.apk
           test -s build/EcosDelUmbral-debug.apk
