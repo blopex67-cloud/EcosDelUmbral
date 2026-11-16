@@ -244,8 +244,13 @@ func _texture_material(path: String, normal_path: String, rough: float) -> Stand
 	mat.albedo_texture = load(path) as Texture2D
 	mat.normal_enabled = true
 	mat.normal_texture = load(normal_path) as Texture2D
-	mat.normal_scale = 0.32
+	mat.normal_scale = 0.22
 	mat.roughness = rough
+	var rough_name := path.get_file().replace("_albedo.jpg","_roughness.jpg")
+	var rough_path := path.get_base_dir().path_join(rough_name)
+	if ResourceLoader.exists(rough_path):
+		mat.roughness_texture = load(rough_path) as Texture2D
+		mat.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	mat.uv1_scale = Vector3(6,6,1)
 	return mat
