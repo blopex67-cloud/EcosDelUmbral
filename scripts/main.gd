@@ -4,7 +4,7 @@ extends Node3D
 var player: CharacterBody3D
 var camera: Camera3D
 var animatronic: Node3D
-var anim_head: Node3D
+var anim_player: AnimationPlayer
 var hud: Label
 var threat_label: Label
 var overlay: ColorRect
@@ -26,6 +26,9 @@ var sprinting := false
 var stick_center := Vector2.ZERO
 var stick_radius := 82.0
 var hud_layer: CanvasLayer
+var floor_mat: StandardMaterial3D
+var wall_mat: StandardMaterial3D
+var wood_mat: StandardMaterial3D
 
 func _ready() -> void:
 	print("PIZZERIA_FREE_SCENE_READY")
@@ -41,36 +44,87 @@ func _build_world() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.008, 0.009, 0.012)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.29, 0.24, 0.19)
-	env.ambient_light_energy = 0.58
+	env.ambient_light_color = Color(0.40, 0.37, 0.34)
+	env.ambient_light_energy = 0.82
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env_node.environment = env
 	add_child(env_node)
+	# Texturas 1K con mapas normales, comprimidas en JPG para un APK ligero.
+	floor_mat = _texture_material("res://assets/textures/floor_tiles.jpg", "res://assets/textures/floor_tiles_normal.jpg", 0.92)
+	wall_mat = _texture_material("res://assets/textures/wall_plaster.jpg", "res://assets/textures/wall_plaster_normal.jpg", 0.94)
+	wood_mat = _texture_material("res://assets/textures/oak_veneer.jpg", "res://assets/textures/oak_veneer_normal.jpg", 0.76)
 	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
-	_solid_box(Vector3(0, -0.3, 0), Vector3(30, 0.6, 26), Color(0.13, 0.105, 0.08))
+	var floor_mesh := _solid_box(Vector3(0, -0.3, 0), Vector3(30, 0.6, 26), Color.WHITE)
+	floor_mesh.material_override = floor_mat
 	_solid_box(Vector3(0, 5.1, 0), Vector3(30, 0.5, 26), Color(0.075, 0.063, 0.055), false)
-	_solid_box(Vector3(0, 2.3, -13), Vector3(30, 4.6, 0.5), Color(0.17, 0.13, 0.1))
-	_solid_box(Vector3(0, 2.3, 13), Vector3(30, 4.6, 0.5), Color(0.15, 0.11, 0.09))
-	_solid_box(Vector3(-15, 2.3, 0), Vector3(0.5, 4.6, 26), Color(0.14, 0.105, 0.085))
-	_solid_box(Vector3(15, 2.3, 0), Vector3(0.5, 4.6, 26), Color(0.14, 0.105, 0.085))
+	for wall in [
+		_solid_box(Vector3(0, 2.3, -13), Vector3(30, 4.6, 0.5), Color.WHITE),
+		_solid_box(Vector3(0, 2.3, 13), Vector3(30, 4.6, 0.5), Color.WHITE),
+		_solid_box(Vector3(-15, 2.3, 0), Vector3(0.5, 4.6, 26), Color.WHITE),
+		_solid_box(Vector3(15, 2.3, 0), Vector3(0.5, 4.6, 26), Color.WHITE)]:
+		wall.material_override = wall_mat
 	# Mostrador, escenario y cabinas decorativas; el comedor queda transitable.
-	_solid_box(Vector3(0, 1.2, -10.2), Vector3(8, 2.4, 1.3), Color(0.25, 0.12, 0.075))
+	var counter := _solid_box(Vector3(0, 1.2, -10.2), Vector3(8, 2.4, 1.3), Color.WHITE)
+	counter.material_override = wood_mat
 	_solid_box(Vector3(-9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	_solid_box(Vector3(9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	# Mesas, asientos y franjas de color con colisión baja y sencilla.
 	for p in [Vector3(-8,0,-3), Vector3(8,0,-3), Vector3(-8,0,4), Vector3(8,0,4), Vector3(0,0,3)]:
-		_solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color(0.38,0.19,0.105))
+		var tabletop := _solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color.WHITE)
+		tabletop.material_override = wood_mat
 		for sx in [-1.0, 1.0]:
 			_solid_box(p + Vector3(sx*2.0,0.48,0), Vector3(0.55,0.95,0.65), Color(0.32,0.085,0.07))
 	# Luces cálidas dispersas y focos de escenario.
-	for p in [Vector3(-9,3.8,-5), Vector3(0,4,-3), Vector3(9,3.8,-5), Vector3(-8,3.5,6), Vector3(8,3.5,6)]:
+	for p in [Vector3(-10,3.8,-6), Vector3(0,4,-7), Vector3(10,3.8,-6), Vector3(-10,3.5,3), Vector3(0,3.7,5), Vector3(10,3.5,3)]:
 		var light := OmniLight3D.new()
 		light.position = p
 		light.light_color = Color(1.0,0.63,0.32)
-		light.light_energy = 0.55
-		light.omni_range = 9.0
+		light.light_energy = 0.78
+		light.omni_range = 10.0
 		light.shadow_enabled = false
 		add_child(light)
+	# Neon strips with emissive material + subtle low-cost coloured light.
+	_add_led_strip(Vector3(0,4.25,-12.55), Vector3(22,0.12,0.07), Color(0.05,0.88,1.0))
+	_add_led_strip(Vector3(0,3.95,12.55), Vector3(18,0.10,0.06), Color(1.0,0.08,0.36))
+	_add_led_strip(Vector3(-14.55,3.5,0), Vector3(0.07,0.10,18), Color(0.36,0.12,1.0))
+	_add_led_strip(Vector3(14.55,3.5,0), Vector3(0.07,0.10,18), Color(0.05,0.82,0.62))
+	_add_neon_light(Vector3(0,3.8,-11.7), Color(0.03,0.56,1.0), 0.7, 6.5)
+	_add_neon_light(Vector3(-12.8,3.1,0), Color(0.32,0.07,1.0), 0.5, 6.0)
+	_add_neon_light(Vector3(12.8,3.1,0), Color(0.03,0.7,0.45), 0.5, 6.0)
+
+func _add_led_strip(pos: Vector3, size: Vector3, color: Color) -> void:
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	mesh.mesh = box
+	mesh.position = pos
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 2.2
+	mesh.material_override = mat
+	add_child(mesh)
+
+func _add_neon_light(pos: Vector3, color: Color, energy: float, reach: float) -> void:
+	var light := OmniLight3D.new()
+	light.position = pos
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = reach
+	light.shadow_enabled = false
+	add_child(light)
+
+func _texture_material(path: String, normal_path: String, rough: float) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = load(path) as Texture2D
+	mat.normal_enabled = true
+	mat.normal_texture = load(normal_path) as Texture2D
+	mat.normal_scale = 0.32
+	mat.roughness = rough
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	mat.uv1_scale = Vector3(6,6,1)
+	return mat
 
 func _build_player() -> void:
 	player = CharacterBody3D.new()
@@ -103,54 +157,54 @@ func _build_player() -> void:
 	add_child(player)
 
 func _build_animatronic() -> void:
-	animatronic = Node3D.new()
-	animatronic.name = "Animatronic_Pursuer"
-	animatronic.position = Vector3(0, 0, -8)
+	# Rigged animated CC0 robot model with 20 animation clips.
+	animatronic = CharacterBody3D.new()
+	animatronic.name = "Animatronic_Rigged_Robot"
+	animatronic.position = Vector3(0,0,-8)
+	var shape := CapsuleShape3D.new()
+	shape.radius = 0.38
+	shape.height = 1.68
+	var collider := CollisionShape3D.new()
+	collider.shape = shape
+	collider.position.y = 0.84
+	animatronic.add_child(collider)
+	var packed := load("res://assets/models/animated_robot.glb") as PackedScene
+	if packed:
+		var model := packed.instantiate() as Node3D
+		model.name = "RiggedAnimatedRobot"
+		model.position.y = 0.06
+		model.scale = Vector3.ONE * 1.15
+		animatronic.add_child(model)
+		_apply_robot_animatronic_material(model)
+		anim_player = _find_animation_player(model)
+		if anim_player and anim_player.has_animation("Idle-loop"):
+			anim_player.play("Idle-loop")
+	else:
+		push_warning("Animated GLB unavailable; placeholder fallback used.")
+		_add_sphere(animatronic,Vector3(0,0.9,0),Vector3(0.42,0.65,0.35),Color(0.26,0.12,0.11))
 	add_child(animatronic)
-	var brown := Color(0.30,0.17,0.085)
-	var tan := Color(0.66,0.45,0.25)
-	_add_sphere(animatronic, Vector3(0,1.0,0), Vector3(0.56,0.72,0.44), brown)
-	_add_sphere(animatronic, Vector3(0,0.34,0), Vector3(0.43,0.53,0.32), brown)
-	anim_head = Node3D.new()
-	anim_head.position.y = 1.78
-	animatronic.add_child(anim_head)
-	_add_sphere(anim_head, Vector3.ZERO, Vector3(0.44,0.43,0.38), brown)
-	_add_sphere(anim_head, Vector3(-0.38,0.34,0), Vector3(0.17,0.22,0.12), brown)
-	_add_sphere(anim_head, Vector3(0.38,0.34,0), Vector3(0.17,0.22,0.12), brown)
-	for x in [-0.16, 0.16]:
-		var eye := _add_sphere(anim_head, Vector3(x,0.1,0.32), Vector3(0.085,0.095,0.06), Color(1.0,0.72,0.2))
-		var glow := StandardMaterial3D.new()
-		glow.albedo_color = Color(1.0,0.56,0.12)
-		glow.emission_enabled = true
-		glow.emission = Color(1.0,0.31,0.035)
-		glow.emission_energy_multiplier = 2.4
-		eye.material_override = glow
-	_add_sphere(anim_head, Vector3(0,-0.08,0.36), Vector3(0.13,0.1,0.09), Color(0.07,0.04,0.03))
-	_add_sphere(anim_head, Vector3(0,-0.24,0.31), Vector3(0.3,0.17,0.14), tan)
-	_add_box_child(anim_head, Vector3(0,0.55,0), Vector3(0.5,0.12,0.5), Color(0.12,0.07,0.04))
-	_add_box_child(anim_head, Vector3(0,0.77,0), Vector3(0.3,0.35,0.3), Color(0.12,0.07,0.04))
-	for sx in [-1.0,1.0]:
-		_add_sphere(animatronic, Vector3(sx*0.55,1.0,0), Vector3(0.18,0.49,0.18), brown)
-		_add_sphere(animatronic, Vector3(sx*0.28,0.25,0), Vector3(0.20,0.24,0.2), Color(0.13,0.09,0.06))
-	var body_shape := CapsuleShape3D.new()
-	body_shape.radius = 0.43
-	body_shape.height = 2.25
-	var body_collision := CollisionShape3D.new()
-	body_collision.shape = body_shape
-	body_collision.position.y = 1.1
-	# Pursuer movement is kinematic, collision shape protects player from props.
-	var body := CharacterBody3D.new()
-	body.name = "PursuerBody"
-	body.position = animatronic.position
-	body.add_child(body_collision)
-	# Keep collision body as the animated root; transfer visual children to it.
-	remove_child(animatronic)
-	for child in animatronic.get_children():
-		animatronic.remove_child(child)
-		body.add_child(child)
-	animatronic.free()
-	animatronic = body
-	add_child(animatronic)
+
+func _apply_robot_animatronic_material(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mesh_instance := node as MeshInstance3D
+		for surface in range(mesh_instance.mesh.get_surface_count()):
+			var source := mesh_instance.get_active_material(surface)
+			if source is StandardMaterial3D:
+				var mat := (source as StandardMaterial3D).duplicate() as StandardMaterial3D
+				mat.albedo_color = Color(0.92,0.66,0.62,1.0)
+				mat.roughness = 0.62
+				mesh_instance.set_surface_override_material(surface,mat)
+	for child in node.get_children():
+		_apply_robot_animatronic_material(child)
+
+func _find_animation_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node as AnimationPlayer
+	for child in node.get_children():
+		var result := _find_animation_player(child)
+		if result:
+			return result
+	return null
 
 func _build_hud() -> void:
 	hud_layer = CanvasLayer.new()
@@ -250,11 +304,11 @@ func _setup_audio() -> void:
 	ambience.finished.connect(func(): ambience.play())
 	ambience.play()
 	footstep_player = AudioStreamPlayer.new()
-	footstep_player.stream = load("res://assets/audio/player_footsteps.mp3")
+	footstep_player.stream = load("res://assets/audio/player_step.ogg")
 	footstep_player.volume_db = -10.0
 	add_child(footstep_player)
 	stomp_player = AudioStreamPlayer.new()
-	stomp_player.stream = load("res://assets/audio/animatronic_stomp.mp3")
+	stomp_player.stream = load("res://assets/audio/robot_step.ogg")
 	stomp_player.volume_db = -5.0
 	add_child(stomp_player)
 
@@ -305,7 +359,7 @@ func _process(delta: float) -> void:
 		if walk_timer <= 0.0:
 			footstep_player.pitch_scale = randf_range(0.94,1.06)
 			footstep_player.play()
-			walk_timer = 0.40 if sprinting else 0.56
+			walk_timer = 0.58 if sprinting else 0.72
 	# El animatrónico te rastrea directamente por el comedor y acelera con el tiempo.
 	var to_player := player.global_position - animatronic.global_position
 	to_player.y = 0
@@ -318,12 +372,16 @@ func _process(delta: float) -> void:
 		animatronic.velocity.y = -0.25
 		animatronic.move_and_slide()
 		animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
-		if anim_head: anim_head.rotation.x = sin(elapsed * 2.4) * 0.035
+		if anim_player:
+			var wanted := "Sprint-loop" if distance < 6.0 else "Run-loop"
+			if anim_player.has_animation(wanted) and anim_player.current_animation != wanted:
+				anim_player.play(wanted,0.18)
+			anim_player.speed_scale = 1.0 + minf(elapsed/150.0,0.35)
 	stomp_timer -= delta
 	if distance < 10.0 and stomp_timer <= 0.0:
 		stomp_player.pitch_scale = clampf(1.15 - distance * 0.035,0.78,1.1)
 		stomp_player.play()
-		stomp_timer = clampf(distance * 0.16,0.55,1.4)
+		stomp_timer = clampf(distance * 0.35,1.8,3.2)
 	if distance < 1.45:
 		_caught_player()
 	threat_label.text = "¡TE ESTÁ BUSCANDO!" if distance < 8.0 else "SE OYEN PASOS LEJANOS"
