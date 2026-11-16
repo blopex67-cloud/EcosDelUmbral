@@ -9,7 +9,6 @@ var hud: Label
 var threat_label: Label
 var overlay: ColorRect
 var flashlight: SpotLight3D
-var ambience: AudioStreamPlayer
 var footstep_player: AudioStreamPlayer
 var stomp_player: AudioStreamPlayer3D
 var touch_stick_id := -1
@@ -18,7 +17,6 @@ var stick_vector := Vector2.ZERO
 var look_delta := Vector2.ZERO
 var last_look_pos := Vector2.ZERO
 var walk_timer := 0.0
-var stomp_timer := 0.0
 var elapsed := 0.0
 var caught := false
 var lamp_on := true
@@ -32,6 +30,22 @@ var wood_mat: StandardMaterial3D
 var stick_base: Panel
 var stick_knob: Panel
 var stick_knob_radius := 42.0
+var game_started := false
+var lobby_layer: CanvasLayer
+var anim_step_timer := 0.0
+var flashlight_audio: AudioStreamPlayer
+var horror_player: AudioStreamPlayer
+var monster_growl_player: AudioStreamPlayer3D
+var toy_voice_player: AudioStreamPlayer3D
+var laugh_player: AudioStreamPlayer3D
+var ambience_player: AudioStreamPlayer
+var footstep_a: AudioStreamPlayer
+var footstep_b: AudioStreamPlayer
+var robot_step_a: AudioStreamPlayer3D
+var robot_step_b: AudioStreamPlayer3D
+var voice_timer := 13.0
+var horror_timer := 37.0
+var player_step_flip := false
 
 func _ready() -> void:
 	print("PIZZERIA_FREE_SCENE_READY")
@@ -40,6 +54,7 @@ func _ready() -> void:
 	_build_animatronic()
 	_build_hud()
 	_setup_audio()
+	_build_lobby()
 
 func _build_world() -> void:
 	var env_node := WorldEnvironment.new()
@@ -48,17 +63,20 @@ func _build_world() -> void:
 	env.background_color = Color(0.008, 0.009, 0.012)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.56, 0.48)
-	env.ambient_light_energy = 0.88
+	env.ambient_light_energy = 0.74
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.glow_enabled = false
-	env.glow_intensity = 0.0
-	env.glow_bloom = 0.0
+	env.glow_enabled = true
+	env.glow_intensity = 0.18
+	env.glow_bloom = 0.025
 	env_node.environment = env
 	add_child(env_node)
 	# Texturas 1K con mapas normales, comprimidas en JPG para un APK ligero.
 	floor_mat = _texture_material("res://assets/textures/floor_tiles.jpg", "res://assets/textures/floor_tiles_normal.jpg", 0.92)
-	wall_mat = _texture_material("res://assets/textures/wall_plaster.jpg", "res://assets/textures/wall_plaster_normal.jpg", 0.94)
-	wood_mat = _texture_material("res://assets/textures/oak_veneer.jpg", "res://assets/textures/oak_veneer_normal.jpg", 0.76)
+	floor_mat.uv1_scale = Vector3(12.0,12.0,1.0)
+	wall_mat = _texture_material("res://assets/textures/wall_albedo.jpg", "res://assets/textures/wall_normal.jpg", 0.94)
+	wall_mat.uv1_scale = Vector3(10,4,1)
+	wood_mat = _texture_material("res://assets/textures/wood_albedo.jpg", "res://assets/textures/wood_normal.jpg", 0.68)
+	wood_mat.uv1_scale = Vector3(3,3,1)
 	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
 	var floor_mesh := _solid_box(Vector3(0, -0.3, 0), Vector3(48, 0.6, 44), Color.WHITE)
 	floor_mesh.material_override = floor_mat
@@ -76,10 +94,17 @@ func _build_world() -> void:
 	_solid_box(Vector3(9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	# Mesas, asientos y franjas de color con colisión baja y sencilla.
 	for p in [Vector3(-16,0,-3), Vector3(-8,0,-3), Vector3(0,0,-3), Vector3(8,0,-3), Vector3(16,0,-3), Vector3(-16,0,6), Vector3(-8,0,6), Vector3(0,0,6), Vector3(8,0,6), Vector3(16,0,6)]:
-		var tabletop := _solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color.WHITE, true, 2)
-		tabletop.material_override = wood_mat
+		var tabletop := _solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color(0.72,0.70,0.63), false)
+		tabletop.material_override = _material(Color(0.74,0.72,0.66))
+		# Tablecloth has soft folds and shaded edges similar to the supplied reference.
+		_solid_box(p + Vector3(0,0.99,0),Vector3(3.0,0.08,1.96),Color(0.79,0.77,0.69),false)
+		_solid_box(p + Vector3(0,0.73,0),Vector3(2.94,0.42,1.90),Color(0.68,0.66,0.59),false)
+		for dx in [-1.40,1.40]:
+			_solid_box(p+Vector3(dx,0.55,0),Vector3(0.055,0.72,1.92),Color(0.78,0.76,0.69),false)
 		for sx in [-1.0, 1.0]:
-			_solid_box(p + Vector3(sx*1.45,0.48,0), Vector3(0.55,0.95,0.65), Color(0.32,0.085,0.07), true, 2)
+			var chair_pos := p + Vector3(sx*1.45,0.48,0)
+			_solid_box(chair_pos, Vector3(0.58,0.95,0.68), Color(0.24,0.055,0.05), true, 2)
+			_solid_box(chair_pos+Vector3(0,0.68,0.28),Vector3(0.58,0.62,0.12),Color(0.28,0.065,0.055),true,2)
 	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
 	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065),true,2)
 	stage.material_override = wood_mat
@@ -122,6 +147,14 @@ func _build_world() -> void:
 	for x in [-20.0,-14.0,14.0,20.0]:
 		_add_box_child(self,Vector3(x,0.88,-17.63),Vector3(1.25,0.78,0.04),Color(0.10,0.12,0.14))
 		_add_led_strip(Vector3(x,1.42,-17.61),Vector3(1.0,0.035,0.03),Color(1.0,0.22,0.07))
+	# Iconic two-tone checker trim inspired by the supplied restaurant reference.
+	_add_checker_band(Vector3(0,2.75,21.68),Vector3(45.4,0.36,0.065),28,true)
+	_add_checker_band(Vector3(-23.68,2.75,0),Vector3(0.065,0.36,40.0),25,false)
+	# Party balloons with thin cords at the room corners, low polygon count.
+	_add_balloon_cluster(Vector3(-20.5,0,-18.5))
+	_add_balloon_cluster(Vector3(20.5,0,-18.5))
+	_add_balloon_cluster(Vector3(-20.5,0,18.5))
+	_add_balloon_cluster(Vector3(20.5,0,18.5))
 	# Luces cálidas dispersas y focos de escenario.
 	for p in [Vector3(-16,3.8,-6),Vector3(0,3.8,-6),Vector3(16,3.8,-6),Vector3(-16,3.8,8),Vector3(0,3.8,8),Vector3(16,3.8,8),Vector3(0,3.5,-17)]:
 		var light := OmniLight3D.new()
@@ -136,6 +169,52 @@ func _build_world() -> void:
 	_add_led_strip(Vector3(0,3.95,12.55), Vector3(36,0.10,0.06), Color(1.0,0.08,0.36))
 	_add_led_strip(Vector3(-23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.36,0.12,1.0))
 	_add_led_strip(Vector3(23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.05,0.82,0.62))
+
+func _add_checker_band(center: Vector3, size: Vector3, count: int, horizontal: bool) -> void:
+	var box := BoxMesh.new()
+	box.size = Vector3(size.x/float(count),size.y,size.z) if horizontal else Vector3(size.x,size.y,size.z/float(count))
+	var multi := MultiMesh.new()
+	multi.transform_format = MultiMesh.TRANSFORM_3D
+	multi.use_colors = true
+	multi.mesh = box
+	multi.instance_count = count
+	for i in range(count):
+		var offset := -size.x*0.5+(float(i)+0.5)*(size.x/float(count)) if horizontal else -size.z*0.5+(float(i)+0.5)*(size.z/float(count))
+		var pos := center+Vector3(offset,0,0) if horizontal else center+Vector3(0,0,offset)
+		multi.set_instance_transform(i,Transform3D(Basis.IDENTITY,pos))
+		multi.set_instance_color(i,Color(0.12,0.12,0.13) if i%2==0 else Color(0.73,0.70,0.63))
+	var inst := MultiMeshInstance3D.new()
+	inst.multimesh = multi
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.82
+	inst.material_override = mat
+	add_child(inst)
+
+func _add_balloon_cluster(origin: Vector3) -> void:
+	var sphere := SphereMesh.new()
+	sphere.radial_segments = 10
+	sphere.rings = 6
+	sphere.radius = 0.34
+	sphere.height = 0.78
+	var multi := MultiMesh.new()
+	multi.transform_format = MultiMesh.TRANSFORM_3D
+	multi.use_colors = true
+	multi.mesh = sphere
+	multi.instance_count = 4
+	var colors := [Color(0.76,0.035,0.045),Color(0.86,0.65,0.035),Color(0.02,0.32,0.42),Color(0.52,0.035,0.16)]
+	for i in range(4):
+		var pos := origin+Vector3(float(i%2)*0.48-0.24,3.0+float(i%3)*0.38,-0.22+float(i/2)*0.38)
+		multi.set_instance_transform(i,Transform3D(Basis.IDENTITY,pos))
+		multi.set_instance_color(i,colors[i])
+	var inst := MultiMeshInstance3D.new()
+	inst.multimesh = multi
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.28
+	mat.metallic = 0.04
+	inst.material_override = mat
+	add_child(inst)
 
 func _add_led_strip(pos: Vector3, size: Vector3, color: Color) -> void:
 	var mesh := MeshInstance3D.new()
@@ -223,6 +302,7 @@ func _build_animatronic() -> void:
 		model.scale = Vector3.ONE * 0.90
 		model.rotation.y = PI
 		animatronic.add_child(model)
+		_apply_smooth_mimic_shader(model)
 		anim_player = _find_animation_player(model)
 		if anim_player:
 			var idle_clip := _find_animation_name(anim_player,"Idle")
@@ -231,6 +311,24 @@ func _build_animatronic() -> void:
 		push_warning("The Mimic GLB unavailable; placeholder fallback used.")
 		_add_sphere(animatronic,Vector3(0,0.9,0),Vector3(0.42,0.65,0.35),Color(0.26,0.12,0.11))
 	add_child(animatronic)
+
+func _apply_smooth_mimic_shader(node: Node) -> void:
+	# Retains the model's own texture while using a roughness-tuned smooth PBR shader.
+	if node is MeshInstance3D:
+		var mesh_instance := node as MeshInstance3D
+		for surface in range(mesh_instance.mesh.get_surface_count()):
+			var source := mesh_instance.get_active_material(surface) as StandardMaterial3D
+			if source:
+				var shader_material := ShaderMaterial.new()
+				shader_material.shader = load("res://assets/shaders/mimic_smooth.gdshader") as Shader
+				shader_material.set_shader_parameter("albedo_tex",source.albedo_texture)
+				shader_material.set_shader_parameter("base_tint",source.albedo_color)
+				shader_material.set_shader_parameter("roughness_value",0.42)
+				shader_material.set_shader_parameter("metallic_value",0.24)
+				shader_material.set_shader_parameter("normal_tex",source.normal_texture)
+				shader_material.set_shader_parameter("has_normal_tex",source.normal_enabled and source.normal_texture != null)
+				mesh_instance.set_surface_override_material(surface,shader_material)
+	for child in node.get_children(): _apply_smooth_mimic_shader(child)
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
 	if node is AnimationPlayer:
@@ -248,6 +346,7 @@ func _find_animation_name(player_node: AnimationPlayer, fragment: String) -> Str
 
 func _build_hud() -> void:
 	hud_layer = CanvasLayer.new()
+	hud_layer.layer = 2
 	add_child(hud_layer)
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -331,25 +430,118 @@ func _make_button(root: Control, text: String, pos: Vector2, size: Vector2) -> B
 	return b
 
 func _setup_audio() -> void:
-	ambience = AudioStreamPlayer.new()
-	ambience.stream = load("res://assets/audio/pizzeria_horror_ambience.mp3")
-	ambience.volume_db = -18.0
-	add_child(ambience)
-	ambience.finished.connect(func(): ambience.play())
-	ambience.play()
-	footstep_player = AudioStreamPlayer.new()
-	footstep_player.stream = load("res://assets/audio/player_step.ogg")
-	footstep_player.volume_db = -13.0
-	add_child(footstep_player)
-	stomp_player = AudioStreamPlayer3D.new()
-	stomp_player.stream = load("res://assets/audio/robot_step.ogg")
-	stomp_player.volume_db = -2.0
-	stomp_player.max_distance = 18.0
-	stomp_player.unit_size = 7.0
-	animatronic.add_child(stomp_player)
+	ambience_player = AudioStreamPlayer.new()
+	ambience_player.stream = load("res://assets/audio/pizzeria_horror_ambience.mp3")
+	ambience_player.volume_db = -19.0
+	add_child(ambience_player)
+	ambience_player.finished.connect(func():
+		if game_started: ambience_player.play()
+	)
+	footstep_a = AudioStreamPlayer.new()
+	footstep_a.stream = load("res://assets/audio/player_step.ogg")
+	footstep_a.volume_db = -13.0
+	add_child(footstep_a)
+	footstep_b = AudioStreamPlayer.new()
+	footstep_b.stream = load("res://assets/audio/player_step.ogg")
+	footstep_b.volume_db = -13.0
+	add_child(footstep_b)
+	footstep_player = footstep_a
+	robot_step_a = _make_robot_step_player(-1.0)
+	robot_step_b = _make_robot_step_player(-1.0)
+	stomp_player = robot_step_a
+	flashlight_audio = AudioStreamPlayer.new()
+	flashlight_audio.stream = load("res://assets/audio/flashlight_click.mp3")
+	flashlight_audio.volume_db = -4.0
+	add_child(flashlight_audio)
+	horror_player = AudioStreamPlayer.new()
+	horror_player.stream = load("res://assets/audio/horror_sting.mp3")
+	horror_player.volume_db = -15.0
+	add_child(horror_player)
+	monster_growl_player = AudioStreamPlayer3D.new()
+	monster_growl_player.stream = load("res://assets/audio/monster_growl.mp3")
+	monster_growl_player.volume_db = -11.0
+	monster_growl_player.max_distance = 24.0
+	monster_growl_player.unit_size = 6.0
+	animatronic.add_child(monster_growl_player)
+	toy_voice_player = AudioStreamPlayer3D.new()
+	toy_voice_player.stream = load("res://assets/audio/toy_hello.mp3")
+	toy_voice_player.volume_db = -8.0
+	toy_voice_player.max_distance = 32.0
+	toy_voice_player.unit_size = 8.0
+	animatronic.add_child(toy_voice_player)
+	laugh_player = AudioStreamPlayer3D.new()
+	laugh_player.stream = load("res://assets/audio/creepy_laugh.mp3")
+	laugh_player.volume_db = -10.0
+	laugh_player.max_distance = 26.0
+	laugh_player.unit_size = 6.0
+	animatronic.add_child(laugh_player)
+
+func _make_robot_step_player(vol: float) -> AudioStreamPlayer3D:
+	var player_node := AudioStreamPlayer3D.new()
+	player_node.stream = load("res://assets/audio/robot_step.ogg")
+	player_node.volume_db = vol
+	player_node.max_distance = 24.0
+	player_node.unit_size = 6.0
+	animatronic.add_child(player_node)
+	return player_node
+
+func _build_lobby() -> void:
+	# Keep the main camera selected but stop the whole play world until START.
+	player.get_node("LookPivot").rotation.x = -0.08
+	player.rotation.y = 0.0
+	lobby_layer = CanvasLayer.new()
+	lobby_layer.layer = 10
+	add_child(lobby_layer)
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0.012,0.016,0.022,0.78)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	lobby_layer.add_child(shade)
+	var title := Label.new()
+	title.text = "NOCHE EN LA PIZZERÍA"
+	title.anchor_left = 0.15; title.anchor_right = 0.85
+	title.anchor_top = 0.16; title.anchor_bottom = 0.31
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size",42)
+	title.add_theme_color_override("font_color",Color(0.97,0.80,0.52))
+	lobby_layer.add_child(title)
+	var subtitle := Label.new()
+	subtitle.text = "PASEA POR LA PIZZERÍA • SOBREVIVE A THE MIMIC"
+	subtitle.anchor_left = 0.12; subtitle.anchor_right = 0.88
+	subtitle.anchor_top = 0.32; subtitle.anchor_bottom = 0.42
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size",19)
+	subtitle.add_theme_color_override("font_color",Color(0.80,0.79,0.74))
+	lobby_layer.add_child(subtitle)
+	var start_button := _make_button(shade,"ENTRAR A LA PIZZERÍA",Vector2(0,0),Vector2(360,76))
+	start_button.anchor_left = 0.5; start_button.anchor_right = 0.5
+	start_button.anchor_top = 0.58; start_button.anchor_bottom = 0.58
+	start_button.position = Vector2(-180,0)
+	start_button.add_theme_font_size_override("font_size",23)
+	start_button.pressed.connect(_start_game)
+	var credit := Label.new()
+	credit.text = "THE MIMIC • FAN GAME GRATUITO • MODO MÓVIL"
+	credit.anchor_left = 0.12; credit.anchor_right = 0.88
+	credit.anchor_top = 0.84; credit.anchor_bottom = 0.94
+	credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	credit.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	credit.add_theme_font_size_override("font_size",15)
+	credit.add_theme_color_override("font_color",Color(0.58,0.59,0.62))
+	lobby_layer.add_child(credit)
+	hud_layer.visible = false
+
+func _start_game() -> void:
+	if game_started: return
+	game_started = true
+	hud_layer.visible = true
+	lobby_layer.queue_free()
+	ambience_player.play()
+	horror_player.play()
+	voice_timer = 22.0
 
 func _input(event: InputEvent) -> void:
-	if caught: return
+	if not game_started or caught: return
 	if event is InputEventScreenTouch:
 		if event.pressed:
 			var viewport_size := get_viewport().get_visible_rect().size
@@ -392,7 +584,7 @@ func _update_stick_visual() -> void:
 	stick_knob.position = stick_center - Vector2(stick_knob_radius,stick_knob_radius) + stick_vector * 58.0
 
 func _process(delta: float) -> void:
-	if caught: return
+	if not game_started or caught: return
 	elapsed += delta
 	if absf(look_delta.x) + absf(look_delta.y) > 0.0:
 		player.rotate_y(-look_delta.x * 0.0032)
@@ -411,10 +603,12 @@ func _process(delta: float) -> void:
 	if move.length() > 0.15:
 		walk_timer -= delta
 		if walk_timer <= 0.0:
+			player_step_flip = not player_step_flip
+			footstep_player = footstep_b if player_step_flip else footstep_a
 			if not footstep_player.playing:
 				footstep_player.pitch_scale = randf_range(0.96,1.04)
 				footstep_player.play()
-			walk_timer = 0.48 if sprinting else 0.62
+			walk_timer = (0.40 if sprinting else 0.57) / (1.0 + minf(elapsed / 150.0,0.35))
 	# El animatrónico te rastrea directamente por el comedor y acelera con el tiempo.
 	var to_player := player.global_position - animatronic.global_position
 	to_player.y = 0
@@ -429,15 +623,42 @@ func _process(delta: float) -> void:
 		animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
 		if anim_player:
 			var wanted := _find_animation_name(anim_player,"RunA")
-			if distance > 8.0: wanted = _find_animation_name(anim_player,"Walk_SK")
-			if wanted != "" and anim_player.current_animation != wanted: anim_player.play(wanted,0.18)
+			var cycle_length := 0.62
+			if distance > 8.0:
+				wanted = _find_animation_name(anim_player,"Walk_SK")
+				cycle_length = 1.29
+			if wanted != "" and anim_player.current_animation != wanted:
+				anim_player.play(wanted,0.18)
+				anim_step_timer = 0.0
 			anim_player.speed_scale = 1.0 + minf(elapsed/150.0,0.35)
-	stomp_timer -= delta
-	if distance < 12.0 and stomp_timer <= 0.0:
-		if not stomp_player.playing:
-			stomp_player.pitch_scale = clampf(1.05 - distance * 0.018,0.82,1.02)
-			stomp_player.play()
-		stomp_timer = clampf(distance * 0.35,1.8,3.4)
+			anim_step_timer -= delta
+			if anim_step_timer <= 0.0 and distance < 24.0 and animatronic.velocity.length() > 0.35:
+				# Two alternating channels align the stomp rhythm to the imported clip.
+				var animation_interval := (cycle_length * 0.5) / maxf(anim_player.speed_scale,0.1)
+				stomp_player = robot_step_b if stomp_player == robot_step_a else robot_step_a
+				if not stomp_player.playing:
+					stomp_player.pitch_scale = clampf(1.0-distance*0.004,0.82,1.04)
+					stomp_player.volume_db = clampf(-19.0+((24.0-distance)/24.0)*17.0,-19.0,-2.0)
+					stomp_player.play()
+				anim_step_timer = animation_interval
+	# Long-gap sting keeps the ambience tense without constant loud sounds.
+	horror_timer -= delta
+	if horror_timer <= 0.0 and not horror_player.playing:
+		horror_player.pitch_scale = randf_range(0.88,1.04)
+		horror_player.play()
+		horror_timer = randf_range(46.0,70.0)
+	# Spatial toy voice / laugh cues at a slow randomized cadence, never overlap each other.
+	voice_timer -= delta
+	if voice_timer <= 0.0 and distance < 28.0 and not toy_voice_player.playing and not laugh_player.playing and not monster_growl_player.playing:
+		var cue := randf()
+		if cue < 0.40:
+			toy_voice_player.pitch_scale = randf_range(0.88,1.06)
+			toy_voice_player.play()
+		elif cue < 0.78:
+			laugh_player.play()
+		else:
+			monster_growl_player.play()
+		voice_timer = randf_range(20.0,32.0)
 	if distance < 1.7:
 		_caught_player()
 	threat_label.text = "¡TE ESTÁ BUSCANDO!" if distance < 8.0 else "SE OYEN PASOS LEJANOS"
@@ -450,13 +671,23 @@ func _process(delta: float) -> void:
 func _toggle_flashlight() -> void:
 	lamp_on = not lamp_on
 	flashlight.visible = lamp_on
+	if game_started and flashlight_audio and not flashlight_audio.playing: flashlight_audio.play()
 
 func _caught_player() -> void:
 	caught = true
-	footstep_player.stop()
-	stomp_player.stop()
-	ambience.stop()
+	footstep_a.stop()
+	footstep_b.stop()
+	robot_step_a.stop()
+	robot_step_b.stop()
+	toy_voice_player.stop()
+	laugh_player.stop()
+	monster_growl_player.stop()
+	ambience_player.stop()
+	flashlight_audio.stop()
+	horror_player.stop()
+	horror_player.play()
 	var to_player := player.global_position - animatronic.global_position
+	if to_player.length_squared() < 0.001: to_player = -player.global_transform.basis.z
 	animatronic.global_position = player.global_position - to_player.normalized() * 0.85
 	animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
 	if anim_player:
