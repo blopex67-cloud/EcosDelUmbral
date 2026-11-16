@@ -74,7 +74,7 @@ jobs:
           godot --headless --editor --path . --quit
           # Boot the actual main scene before exporting; fail on script/runtime errors.
           timeout 20s godot --headless --path . --quit-after 8 2>&1 | tee build-smoke.log
-          if ! grep -q 'PIZZERIA_SCENE_READY' build-smoke.log; then
+          if ! grep -q 'PIZZERIA_FREE_SCENE_READY' build-smoke.log; then
             echo 'Main pizzeria scene did not reach _ready().' 
             exit 1
           fi
