@@ -4,21 +4,21 @@ Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 pa
 
 ## Qué incluye en esta etapa
 
-- Exploración libre en primera persona por un comedor de pizzería, en Android horizontal y a pantalla completa.
-- Joystick táctil para caminar, arrastre en el lado derecho para mirar, botón de linterna y botón de correr.
-- Un animatrónico provisional te persigue por el comedor; su velocidad sube gradualmente, y hay pisadas que se oyen más al acercarse.
-- Ambiente oscuro, mostrador, escenario, mesas y luces cálidas; recursos geométricos ligeros para priorizar rendimiento en móvil.
-- El animatrónico visible es un placeholder hecho con primitivas, **no es todavía el modelo final de Freddy**.
+- Exploración libre en primera persona por el comedor, pensada para Android en horizontal y a pantalla completa.
+- Joystick táctil para caminar, arrastre para mirar, linterna y botón para correr.
+- Un perseguidor 3D riggeado con clips Run/Sprint; acelera con el tiempo y sus pasos se oyen desde su ubicación.
+- Iluminación cálida más tiras LED emisivas rojas, cian, moradas y verdes; superficies de piso, pared y madera con mapas normales PBR y filtrado mipmap.
+- Efectos de ambiente en loop, pasos del jugador y pisadas del perseguidor, ajustados para no superponerse/reiniciarse antes de terminar.
 
-## Sonidos y licencia
+## Assets y créditos
 
-Se añadieron tres efectos descargados de Mixkit: ambiente de terror (ID 2482, 1:22), pasos (ID 542) y pisada/impacto grave (ID 3046). Mixkit los publica bajo su licencia gratuita de efectos; consulta la [licencia de Mixkit](https://mixkit.co/license/#sfxFree). Se incluyen como MP3 compactos para el APK móvil. Catálogos consultados: [ambiente de terror](https://mixkit.co/free-sound-effects/horror/) y [pasos](https://mixkit.co/free-sound-effects/footsteps/).
+- Personaje: [3D Godot Robot Character, de CaptainRipley/Ariana Chow](https://captainripley.itch.io/godot-3d-robot-character), archivo GLB de 1.3 MB con 20 animaciones, publicado en el [repositorio original](https://github.com/AGChow/3D-Godot-Robot-Platformer-Character). Su licencia incluida es **CC0 1.0**. Es un robot genérico adaptado visualmente a animatrónico provisional; **no es Freddy ni un oso**, y los clips se usan para correr.
+- Piso: [Tiles 012 de ambientCG](https://ambientcg.com/view?id=Tiles012), material PBR CC0 reducido a JPG 1K. Pared y madera son texturas 1K locales optimizadas, con mapas normales generados para el prototipo.
+- Audio: [Mixkit Horror ambience](https://mixkit.co/free-sound-effects/horror/) (ID 2482), efectos cortos para pasos/robot (ID 1920 e ID 1417), bajo la licencia de efectos de [Mixkit](https://mixkit.co/license/#sfxFree).
 
-## Modelo de Freddy y licencia
+## Freddy
 
-Encontré [FNaF 1 Freddy Fazbear Rigged, de ShadowSupreme en Sketchfab](https://sketchfab.com/3d-models/fnaf-1-freddy-fazbear-rigged-eddb20dca006466c811c6bfd9b8a8e83). La ficha lo describe como riggeado y muestra licencia Free Standard; el autor solicita crédito y prohíbe atribuirlo a otra persona, hacer recolores o redistribuir su archivo. También informa que tiene 74,5 mil triángulos y texturas 4K, por lo que requiere optimización antes de usarlo en móvil.
-
-La API oficial de descarga exige autenticación y desde este entorno no fue posible bajar el archivo del creador. Por eso no lo incluí ni afirmo que ya esté en el juego. El placeholder se deja explícito en el código y se reemplaza cuando se tenga el archivo original descargado y optimizado con atribución. La página también enlaza un [Freddy animado de FusedMaker](https://sketchfab.com/3d-models/animated-freddy-1229722b704a4b17b2ea956783623297), con CC BY; verificar su contenido y optimizarlo antes de integrarlo.
+El Freddy final todavía no está integrado. Encontré modelos de oso con licencia CC BY, pero Sketchfab exige autenticación para la descarga en este entorno. No he sustituido el personaje por un modelo no descargado ni afirmo que el robot genérico sea Freddy.
 
 ## Construir APK
 
