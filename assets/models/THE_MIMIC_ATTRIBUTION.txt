@@ -1,5 +1,18 @@
-The Mimic DLC model
+THE MIMIC DLC model
 Created by SpiderBight (ArachnoBoy / vang807).
 Source: https://sketchfab.com/3d-models/the-mimic-dlc-1dbe9b38ad8b47cc880b63d493b20884
-License: CC BY-NC 4.0 (https://creativecommons.org/licenses/by-nc/4.0/)
-This asset is for non-commercial use only. Do not sell, monetize, or use in advertising while included.
+License: CC BY-NC 4.0 https://creativecommons.org/licenses/by-nc/4.0/
+Non-commercial use only. The game must remain free and non-commercial while this model is included.
+
+PBR wall texture: Plaster001, ambientCG (CC0 1.0).
+PBR wood texture: WoodFloor010, ambientCG (CC0 1.0).
+Checker floor: generated for this project.
+
+Sound effects from Mixkit under the Mixkit Free SFX License:
+- horror ambience, ID 2482 (already in the project)
+- light switch, ID 2579
+- creepy little creature laugh, ID 2873
+- terror sweep, ID 2630
+- angry dragon/growl effect, ID 309
+- child saying "hiya", ID 2259 (used as a distant toy-like greeting, not official Toy audio)
+- Golem stomp, ID 3046, cut to a short footfall for animation-synchronized steps
