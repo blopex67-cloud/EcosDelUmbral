@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Export Android APK (manual after visual approval)
 
 on:
   workflow_dispatch:
