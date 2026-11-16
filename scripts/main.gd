@@ -11,7 +11,7 @@ var overlay: ColorRect
 var flashlight: SpotLight3D
 var ambience: AudioStreamPlayer
 var footstep_player: AudioStreamPlayer
-var stomp_player: AudioStreamPlayer
+var stomp_player: AudioStreamPlayer3D
 var touch_stick_id := -1
 var touch_look_id := -1
 var stick_vector := Vector2.ZERO
@@ -191,7 +191,7 @@ func _apply_robot_animatronic_material(node: Node) -> void:
 			var source := mesh_instance.get_active_material(surface)
 			if source is StandardMaterial3D:
 				var mat := (source as StandardMaterial3D).duplicate() as StandardMaterial3D
-				mat.albedo_color = Color(0.92,0.66,0.62,1.0)
+				mat.albedo_color = Color(0.76,0.44,0.40,1.0)
 				mat.roughness = 0.62
 				mesh_instance.set_surface_override_material(surface,mat)
 	for child in node.get_children():
@@ -305,12 +305,14 @@ func _setup_audio() -> void:
 	ambience.play()
 	footstep_player = AudioStreamPlayer.new()
 	footstep_player.stream = load("res://assets/audio/player_step.ogg")
-	footstep_player.volume_db = -10.0
+	footstep_player.volume_db = -13.0
 	add_child(footstep_player)
-	stomp_player = AudioStreamPlayer.new()
+	stomp_player = AudioStreamPlayer3D.new()
 	stomp_player.stream = load("res://assets/audio/robot_step.ogg")
-	stomp_player.volume_db = -5.0
-	add_child(stomp_player)
+	stomp_player.volume_db = -2.0
+	stomp_player.max_distance = 18.0
+	stomp_player.unit_size = 7.0
+	animatronic.add_child(stomp_player)
 
 func _input(event: InputEvent) -> void:
 	if caught: return
@@ -357,9 +359,10 @@ func _process(delta: float) -> void:
 	if move.length() > 0.15:
 		walk_timer -= delta
 		if walk_timer <= 0.0:
-			footstep_player.pitch_scale = randf_range(0.94,1.06)
-			footstep_player.play()
-			walk_timer = 0.58 if sprinting else 0.72
+			if not footstep_player.playing:
+				footstep_player.pitch_scale = randf_range(0.96,1.04)
+				footstep_player.play()
+			walk_timer = 0.48 if sprinting else 0.62
 	# El animatrónico te rastrea directamente por el comedor y acelera con el tiempo.
 	var to_player := player.global_position - animatronic.global_position
 	to_player.y = 0
@@ -378,10 +381,11 @@ func _process(delta: float) -> void:
 				anim_player.play(wanted,0.18)
 			anim_player.speed_scale = 1.0 + minf(elapsed/150.0,0.35)
 	stomp_timer -= delta
-	if distance < 10.0 and stomp_timer <= 0.0:
-		stomp_player.pitch_scale = clampf(1.15 - distance * 0.035,0.78,1.1)
-		stomp_player.play()
-		stomp_timer = clampf(distance * 0.35,1.8,3.2)
+	if distance < 12.0 and stomp_timer <= 0.0:
+		if not stomp_player.playing:
+			stomp_player.pitch_scale = clampf(1.05 - distance * 0.018,0.82,1.02)
+			stomp_player.play()
+		stomp_timer = clampf(distance * 0.35,1.8,3.4)
 	if distance < 1.45:
 		_caught_player()
 	threat_label.text = "¡TE ESTÁ BUSCANDO!" if distance < 8.0 else "SE OYEN PASOS LEJANOS"
@@ -397,6 +401,9 @@ func _toggle_flashlight() -> void:
 
 func _caught_player() -> void:
 	caught = true
+	footstep_player.stop()
+	stomp_player.stop()
+	ambience.stop()
 	var to_player := player.global_position - animatronic.global_position
 	animatronic.global_position = player.global_position - to_player.normalized() * 0.8
 	animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
