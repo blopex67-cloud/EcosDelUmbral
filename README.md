@@ -7,7 +7,7 @@ Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 pa
 - Lobby de entrada y pizzería móvil en horizontal a pantalla completa.
 - Recorrido por comedor, escenario, cocina y pasillo de servicio, con baldosa ajedrezada, mesas con manteles, sillas, decoración de fiesta y pared envejecida.
 - The Mimic de SpiderBight con shader PBR de acabado más suave y sus animaciones Idle, Walk, Run y jumpscare. Pisadas espaciales sincronizadas a los ciclos de animación.
-- Click de linterna, ambiente en loop, transiciones de terror, gruñidos distantes, risa de criatura y una voz infantil que dice “hiya” como saludo juguetón del juguete. No se presenta como audio oficial de Toy.
+- Click de linterna, ambiente en loop, transiciones de terror, gruñidos distantes, risa de criatura y la frase infantil “hiya” como saludo juguetón del juguete. Son efectos licenciados de biblioteca; no se presentan como audio oficial de Toy.
 
 ## Assets y licencias
 
