@@ -1,0 +1,45 @@
+name: Godot project tests
+
+on:
+  push:
+    paths:
+      - '**'
+      - '.github/workflows/godot-test.yml'
+  pull_request:
+    paths:
+      - '**'
+      - '.github/workflows/godot-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import-and-smoke-test:
+    name: Import project and run main-scene smoke test (no APK)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      GODOT_VERSION: '4.3'
+    steps:
+      - name: Checkout Godot game project
+        uses: actions/checkout@v4
+      - name: Install Godot 4.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o "$RUNNER_TEMP/godot.zip"
+          python3 -m zipfile -e "$RUNNER_TEMP/godot.zip" "$RUNNER_TEMP/godot"
+          sudo install -m 0755 "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          godot --version
+      - name: Import resources and test the actual game scene
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --editor --path . --quit
+          timeout 25s godot --headless --path . --quit-after 8 2>&1 | tee smoke.log
+          grep -q 'PIZZERIA_FREE_SCENE_READY' smoke.log
+          if grep -E 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid get index' smoke.log; then
+            echo 'Godot main scene smoke test reported a script/runtime error.'
+            exit 1
+          fi
