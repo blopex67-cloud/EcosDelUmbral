@@ -47,9 +47,20 @@ jobs:
           cp "$RUNNER_TEMP/godot/templates/templates/android_debug.apk" "$HOME/.local/share/godot/export_templates/4.3.stable/android_debug.apk"
           cp "$RUNNER_TEMP/godot/templates/templates/android_release.apk" "$HOME/.local/share/godot/export_templates/4.3.stable/android_release.apk"
           godot --version
-          godot --headless --editor --path . --install-android-build-template --quit
-          test -d android/build
-          ls -la android/build
+
+      - name: Configure Godot Android SDK paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<SETTINGS
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          SETTINGS
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -x "$JAVA_HOME/bin/java"
 
       - name: Configure Android debug signing
         run: |
