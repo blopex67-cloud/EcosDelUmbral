@@ -1,23 +1,23 @@
-# Ecos del Umbral
+# Noche en la Pizzería — fan game gratuito
 
-Prototipo gratuito de exploración 3D en Godot 4, como base original para móvil y PC. **No es todavía un fan game de una saga concreta**: no se indicó cuál, así que evita personajes, marcas o material protegido.
+Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 para **Android en horizontal**. No tiene controles ni flujo para PC. Es una obra de fans no oficial; FNAF y sus personajes pertenecen a sus titulares.
 
-## Estado
-- Escena 3D ejecutable con terreno, bosque procedural sencillo, punto de luz y sombras direccionales.
-- Movimiento de teclado y controles táctiles básicos (lado izquierdo: movimiento; arrastre derecho: mirar).
-- Ambiente sonoro breve generado específicamente para este prototipo.
-- El bosque y el jugador son formas provisionales; no hay modelos descargados, enemigos, historia, partículas ni APK validado todavía.
+## Qué incluye en esta etapa
 
-## Abrir
-Abrir `project.godot` en Godot 4.3 o posterior y ejecutar la escena principal. Renderer **GL Compatibility** como punto de partida para Android/equipos modestos. Esto prioriza compatibilidad/rendimiento, no equivale a iluminación físicamente realista de gama alta.
+- Oficina nocturna dentro de una pizzería, pasillos laterales y escritorio de seguridad.
+- Interfaz táctil Android en horizontal con botones de luz, puertas y cámaras.
+- Ciclo prototipo de noche, consumo de energía, amenaza y condición de captura/reintento.
+- Ambiente de sonido original generado para el prototipo.
+- Freddy provisional construido con primitivas y animación sencilla de cabeza. **No es el modelo 3D descargado**.
 
-## Recursos y licencias
-- `assets/audio/ambience.wav` es un ambiente sintetizado original.
-- Se puede reemplazar el bosque con [Stylized Nature MegaKit de Quaternius](https://quaternius.com/packs/stylizednaturemegakit.html). La ficha indica modelos texturizados, archivos glTF y licencia CC0; parte del pack es gratuita y la implementación completa para Godot corresponde a la versión Source. Añade solo los archivos descargados legítimamente y conserva la licencia con los recursos.
-- Los modelos actuales se generan con primitivas de Godot; no se redistribuyen packs de terceros.
+## Modelo de Freddy y licencia
 
-## Optimización planteada
-Primitivas y materiales sencillos, renderer compatible y sombras limitadas a la luz principal. Antes de aumentar calidad, probar FPS, memoria, tamaño de APK y temperatura en el teléfono objetivo. Vegetación densa, postprocesado y modelos complejos se añadirán de forma escalable. **No está probado en Android**.
+Encontré [FNaF 1 Freddy Fazbear Rigged, de ShadowSupreme en Sketchfab](https://sketchfab.com/3d-models/fnaf-1-freddy-fazbear-rigged-eddb20dca006466c811c6bfd9b8a8e83). La ficha lo describe como riggeado y muestra licencia Free Standard; el autor solicita crédito y prohíbe atribuirlo a otra persona, hacer recolores o redistribuir su archivo. También informa que tiene 74,5 mil triángulos y texturas 4K, por lo que requiere optimización antes de usarlo en móvil.
 
-## Siguiente etapa
-Elegir la saga si se quiere que sea un fan game (y revisar sus reglas), integrar assets CC0/compatibles, añadir interacción/objetivo y completar controles móviles; luego automatizar APK y probarlo en el teléfono.
+La API oficial de descarga exige autenticación y desde este entorno no fue posible bajar el archivo del creador. Por eso no lo incluí ni afirmo que ya esté en el juego. El placeholder se deja explícito en el código y se reemplaza cuando se tenga el archivo original descargado y optimizado con atribución. La página también enlaza un [Freddy animado de FusedMaker](https://sketchfab.com/3d-models/animated-freddy-1229722b704a4b17b2ea956783623297), con CC BY; verificar su contenido y optimizarlo antes de integrarlo.
+
+## Construir APK
+
+GitHub Actions ejecuta el workflow `.github/workflows/android-apk.yml` al subir cambios a `main`, o manualmente desde Actions. Produce un APK debug arm64 descargable como artefacto. Es de depuración, no para Play Store.
+
+El proyecto está configurado en orientación paisaje. La lógica principal usa botones táctiles, no teclado ni ratón. Debe probarse en el teléfono: un build exitoso por sí solo no valida gestos, rendimiento ni apariencia.
