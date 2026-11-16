@@ -47,6 +47,9 @@ jobs:
           cp "$RUNNER_TEMP/godot/templates/templates/android_debug.apk" "$HOME/.local/share/godot/export_templates/4.3.stable/android_debug.apk"
           cp "$RUNNER_TEMP/godot/templates/templates/android_release.apk" "$HOME/.local/share/godot/export_templates/4.3.stable/android_release.apk"
           godot --version
+          godot --headless --editor --path . --install-android-build-template --quit
+          test -d android/build
+          ls -la android/build
 
       - name: Configure Android debug signing
         run: |
