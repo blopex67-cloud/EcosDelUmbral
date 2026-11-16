@@ -58,6 +58,7 @@ func _ready() -> void:
 	_build_lobby()
 
 func _build_world() -> void:
+	print("PIZZERIA_CORRIDORS_V2_READY")
 	var env_node := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -79,9 +80,9 @@ func _build_world() -> void:
 	wood_mat = _texture_material("res://assets/textures/wood_albedo.jpg", "res://assets/textures/wood_normal.jpg", 0.68)
 	wood_mat.uv1_scale = Vector3(3,3,1)
 	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
-	var floor_mesh := _solid_box(Vector3(-10, -0.3, -8), Vector3(112, 0.6, 60), Color.WHITE)
+	var floor_mesh := _solid_box(Vector3(-2, -0.3, -8), Vector3(160, 0.6, 60), Color.WHITE, false)
 	floor_mesh.material_override = floor_mat
-	_solid_box(Vector3(-10, 5.1, -8), Vector3(112, 0.5, 60), Color(0.13, 0.10, 0.075), false)
+	_solid_box(Vector3(-2, 5.1, -8), Vector3(160, 0.5, 60), Color(0.13, 0.10, 0.075), false)
 	# Openings connect the dining room to three substantial walkable corridors.
 	# North opening, 6 m wide, aligned with an old tiled service tunnel.
 	for segment in [
@@ -113,8 +114,22 @@ func _build_world() -> void:
 	for segment in [
 		_solid_box(Vector3(36,2.2,-4),Vector3(24,4.4,0.42),Color.WHITE),
 		_solid_box(Vector3(36,2.2,4),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(48,2.2,0),Vector3(0.42,4.4,8),Color.WHITE),
-		_solid_box(Vector3(36,2.2,3.5),Vector3(0.42,4.4,1.0),Color.WHITE)]:
+		_solid_box(Vector3(48,2.2,-3),Vector3(0.42,4.4,2.0),Color.WHITE),
+		_solid_box(Vector3(48,2.2,3),Vector3(0.42,4.4,2.0),Color.WHITE)]:
+		segment.material_override = wall_mat
+	# East wing continues through the service door into a connected three-way corridor loop.
+	for segment in [
+		_solid_box(Vector3(60,2.2,-4),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(60,2.2,4),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(72,2.2,0),Vector3(0.42,4.4,8),Color.WHITE),
+		_solid_box(Vector3(60,2.2,-14),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(60,2.2,14),Vector3(24,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(48,2.2,-9),Vector3(0.42,4.4,10),Color.WHITE),
+		_solid_box(Vector3(48,2.2,9),Vector3(0.42,4.4,10),Color.WHITE),
+		_solid_box(Vector3(60,2.2,-10),Vector3(12,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(60,2.2,10),Vector3(12,4.4,0.42),Color.WHITE),
+		_solid_box(Vector3(66,2.2,-6.5),Vector3(0.42,4.4,7),Color.WHITE),
+		_solid_box(Vector3(66,2.2,6.5),Vector3(0.42,4.4,7),Color.WHITE)]:
 		segment.material_override = wall_mat
 	# Warm ceiling ribs, rounded pipes and alcove doors give the additional corridor a distinct look.
 	for x in [27.0,33.0,39.0,45.0]:
@@ -125,6 +140,29 @@ func _build_world() -> void:
 	for x in [30.0,42.0]:
 		_add_box_child(self,Vector3(x,1.75,3.68),Vector3(1.55,2.45,0.08),Color(0.16,0.13,0.11))
 		_add_box_child(self,Vector3(x,1.75,3.62),Vector3(1.28,2.17,0.06),Color(0.37,0.27,0.20))
+	# PBR pipework, framed doors and worn wall panels make the extended wing less blocky.
+	var pipe_metal := _material(Color(0.27,0.30,0.31))
+	pipe_metal.metallic = 0.68
+	pipe_metal.roughness = 0.34
+	var trim_wood := _material(Color(0.20,0.105,0.062))
+	trim_wood.roughness = 0.58
+	for x in [51.0,57.0,63.0,69.0]:
+		_add_pipe_run(Vector3(x,3.85,0),Vector3(7.2,0.15,0.15),Color(0.29,0.33,0.34))
+		_add_box_child(self,Vector3(x,4.22,0),Vector3(0.20,0.18,7.4),trim_wood)
+		_add_led_strip(Vector3(x,4.02,0),Vector3(1.1,0.055,0.16),Color(0.82,0.58,0.37))
+	for z in [-8.0,8.0]:
+		for x in [54.0,62.0,70.0]:
+			_add_box_child(self,Vector3(x,1.62,z),Vector3(1.45,2.9,0.12),trim_wood)
+			_add_box_child(self,Vector3(x,1.62,z-signf(z)*0.08),Vector3(1.20,2.64,0.06),pipe_metal)
+			_add_box_child(self,Vector3(x+0.39,1.55,z-signf(z)*0.12),Vector3(0.05,0.18,0.05),Color(0.78,0.56,0.25))
+	for x in [52.0,60.0,68.0]:
+		var practical := OmniLight3D.new()
+		practical.position = Vector3(x,3.75,0)
+		practical.light_color = Color(0.80,0.72,0.57) if int(x) % 2 == 0 else Color(0.55,0.68,0.73)
+		practical.light_energy = 0.58
+		practical.omni_range = 8.0
+		practical.shadow_enabled = false
+		add_child(practical)
 	# Ceiling ribs, visible warm fixtures and wall-base wear break up long straight sightlines.
 	for x in [-60.0,-54.0,-48.0,-42.0,-36.0,-30.0]:
 		_add_box_child(self,Vector3(x,4.25,2),Vector3(0.18,0.20,7.4),Color(0.24,0.20,0.17))
@@ -792,7 +830,7 @@ func _add_cylinder(pos: Vector3, radius: float, height: float, color: Color, seg
 	cylinder.top_radius = radius
 	cylinder.bottom_radius = radius
 	cylinder.height = height
-	cylinder.radial_segments = segments
+	cylinder.radial_segments = maxi(segments, 24)
 	cylinder.rings = 2
 	mesh.mesh = cylinder
 	mesh.position = pos
@@ -836,8 +874,8 @@ func _solid_box(pos: Vector3, size: Vector3, color: Color, collides: bool = true
 func _add_sphere(parent: Node3D, pos: Vector3, scale_value: Vector3, color: Color) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
-	sphere.radial_segments = 14
-	sphere.rings = 10
+	sphere.radial_segments = 24
+	sphere.rings = 16
 	sphere.radius = 0.5
 	sphere.height = 1.0
 	mesh.mesh = sphere
