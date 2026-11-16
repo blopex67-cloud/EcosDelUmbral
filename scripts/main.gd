@@ -103,7 +103,7 @@ func _build_world() -> void:
 		for dx in [-1.40,1.40]:
 			_solid_box(p+Vector3(dx,0.55,0),Vector3(0.055,0.72,1.92),Color(0.78,0.76,0.69),false)
 		for sx in [-1.0, 1.0]:
-			var chair_pos := p + Vector3(sx*1.45,0.48,0)
+			var chair_pos: Vector3 = p + Vector3(sx*1.45,0.48,0)
 			_solid_box(chair_pos, Vector3(0.58,0.95,0.68), Color(0.24,0.055,0.05), true, 2)
 			_solid_box(chair_pos+Vector3(0,0.68,0.28),Vector3(0.58,0.62,0.12),Color(0.28,0.065,0.055),true,2)
 	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
