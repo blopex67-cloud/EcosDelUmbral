@@ -52,7 +52,7 @@ func _build_pizzeria() -> void:
 	_box(Vector3(5.85, 1.7, -1), Vector3(0.3, 3.8, 12), Color(0.13, 0.105, 0.09))
 	# Door frames and narrow dark corridors, set to either side of the office.
 	for side in [-1.0, 1.0]:
-		var x := side * 4.7
+		var x: float = side * 4.7
 		_box(Vector3(x, 1.75, -5.45), Vector3(1.9, 3.5, 0.28), Color(0.07, 0.065, 0.06))
 		_box(Vector3(x, 0.08, -4.0), Vector3(2.2, 0.16, 5.2), Color(0.08, 0.075, 0.065))
 		_box(Vector3(x, 0.1, -6.7), Vector3(2.2, 0.2, 0.2), Color(0.34, 0.24, 0.12))
