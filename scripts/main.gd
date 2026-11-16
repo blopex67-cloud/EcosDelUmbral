@@ -63,7 +63,7 @@ func _build_world() -> void:
 	env.background_color = Color(0.008, 0.009, 0.012)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.56, 0.48)
-	env.ambient_light_energy = 0.74
+	env.ambient_light_energy = 0.80
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.glow_intensity = 0.18
@@ -71,7 +71,7 @@ func _build_world() -> void:
 	env_node.environment = env
 	add_child(env_node)
 	# Texturas 1K con mapas normales, comprimidas en JPG para un APK ligero.
-	floor_mat = _texture_material("res://assets/textures/floor_tiles.jpg", "res://assets/textures/floor_tiles_normal.jpg", 0.92)
+	floor_mat = _texture_material("res://assets/textures/floor_checker.jpg", "res://assets/textures/floor_checker_normal.jpg", 0.92)
 	floor_mat.uv1_scale = Vector3(12.0,12.0,1.0)
 	wall_mat = _texture_material("res://assets/textures/wall_albedo.jpg", "res://assets/textures/wall_normal.jpg", 0.94)
 	wall_mat.uv1_scale = Vector3(10,4,1)
@@ -319,15 +319,21 @@ func _apply_smooth_mimic_shader(node: Node) -> void:
 		for surface in range(mesh_instance.mesh.get_surface_count()):
 			var source := mesh_instance.get_active_material(surface) as StandardMaterial3D
 			if source:
-				var shader_material := ShaderMaterial.new()
-				shader_material.shader = load("res://assets/shaders/mimic_smooth.gdshader") as Shader
-				shader_material.set_shader_parameter("albedo_tex",source.albedo_texture)
-				shader_material.set_shader_parameter("base_tint",source.albedo_color)
-				shader_material.set_shader_parameter("roughness_value",0.42)
-				shader_material.set_shader_parameter("metallic_value",0.24)
-				shader_material.set_shader_parameter("normal_tex",source.normal_texture)
-				shader_material.set_shader_parameter("has_normal_tex",source.normal_enabled and source.normal_texture != null)
-				mesh_instance.set_surface_override_material(surface,shader_material)
+				if source.albedo_texture != null:
+					var shader_material := ShaderMaterial.new()
+					shader_material.shader = load("res://assets/shaders/mimic_smooth.gdshader") as Shader
+					shader_material.set_shader_parameter("albedo_tex",source.albedo_texture)
+					shader_material.set_shader_parameter("base_tint",source.albedo_color)
+					shader_material.set_shader_parameter("roughness_value",0.42)
+					shader_material.set_shader_parameter("metallic_value",0.24)
+					shader_material.set_shader_parameter("normal_tex",source.normal_texture)
+					shader_material.set_shader_parameter("has_normal_tex",source.normal_enabled and source.normal_texture != null)
+					mesh_instance.set_surface_override_material(surface,shader_material)
+				else:
+					var smooth_mat := source.duplicate() as StandardMaterial3D
+					smooth_mat.roughness = 0.42
+					smooth_mat.metallic = 0.24
+					mesh_instance.set_surface_override_material(surface,smooth_mat)
 	for child in node.get_children(): _apply_smooth_mimic_shader(child)
 
 func _find_animation_player(node: Node) -> AnimationPlayer:
@@ -470,7 +476,7 @@ func _setup_audio() -> void:
 	toy_voice_player.unit_size = 8.0
 	animatronic.add_child(toy_voice_player)
 	laugh_player = AudioStreamPlayer3D.new()
-	laugh_player.stream = load("res://assets/audio/creepy_laugh.mp3")
+	laugh_player.stream = load("res://assets/audio/toy_giggle.mp3")
 	laugh_player.volume_db = -10.0
 	laugh_player.max_distance = 26.0
 	laugh_player.unit_size = 6.0
