@@ -38,6 +38,7 @@ var horror_player: AudioStreamPlayer
 var monster_growl_player: AudioStreamPlayer3D
 var toy_voice_player: AudioStreamPlayer3D
 var laugh_player: AudioStreamPlayer3D
+var laugh_alt_player: AudioStreamPlayer3D
 var ambience_player: AudioStreamPlayer
 var footstep_a: AudioStreamPlayer
 var footstep_b: AudioStreamPlayer
@@ -486,6 +487,12 @@ func _setup_audio() -> void:
 	laugh_player.max_distance = 26.0
 	laugh_player.unit_size = 6.0
 	animatronic.add_child(laugh_player)
+	laugh_alt_player = AudioStreamPlayer3D.new()
+	laugh_alt_player.stream = load("res://assets/audio/creepy_laugh.mp3")
+	laugh_alt_player.volume_db = -10.0
+	laugh_alt_player.max_distance = 26.0
+	laugh_alt_player.unit_size = 6.0
+	animatronic.add_child(laugh_alt_player)
 
 func _make_robot_step_player(vol: float) -> AudioStreamPlayer3D:
 	var player_node := AudioStreamPlayer3D.new()
@@ -660,13 +667,15 @@ func _process(delta: float) -> void:
 		horror_timer = randf_range(46.0,70.0)
 	# Spatial toy voice / laugh cues at a slow randomized cadence, never overlap each other.
 	voice_timer -= delta
-	if voice_timer <= 0.0 and distance < 28.0 and not toy_voice_player.playing and not laugh_player.playing and not monster_growl_player.playing:
+	if voice_timer <= 0.0 and distance < 28.0 and not toy_voice_player.playing and not laugh_player.playing and not laugh_alt_player.playing and not monster_growl_player.playing:
 		var cue := randf()
-		if cue < 0.40:
+		if cue < 0.34:
 			toy_voice_player.pitch_scale = randf_range(0.88,1.06)
 			toy_voice_player.play()
-		elif cue < 0.78:
+		elif cue < 0.63:
 			laugh_player.play()
+		elif cue < 0.84:
+			laugh_alt_player.play()
 		else:
 			monster_growl_player.play()
 		voice_timer = randf_range(20.0,32.0)
@@ -692,6 +701,7 @@ func _caught_player() -> void:
 	robot_step_b.stop()
 	toy_voice_player.stop()
 	laugh_player.stop()
+	laugh_alt_player.stop()
 	monster_growl_player.stop()
 	ambience_player.stop()
 	flashlight_audio.stop()
