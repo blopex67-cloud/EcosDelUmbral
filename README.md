@@ -5,7 +5,7 @@ Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 pa
 ## Qué incluye en esta etapa
 
 - Lobby de entrada y pizzería móvil en horizontal a pantalla completa.
-- Recorrido por comedor, escenario, cocina y pasillo de servicio, con baldosa ajedrezada, mesas con manteles, sillas, decoración de fiesta y pared envejecida.
+- Recorrido por comedor, escenario, cocina, pasillos de servicio conectados y una nueva ala este con cruces, puertas metálicas, tuberías, luces prácticas y desvíos. Materiales con mapas normales y más detalle en mallas redondeadas; el look sigue siendo un prototipo y debe revisarse en teléfono.
 - The Mimic de SpiderBight con shader PBR de acabado más suave y sus animaciones Idle, Walk, Run y jumpscare. Pisadas espaciales sincronizadas a los ciclos de animación.
 - Click de linterna, ambiente en loop, transiciones de terror, gruñidos distantes, risa de criatura y la frase infantil “hiya” como saludo juguetón del juguete. Son efectos licenciados de biblioteca; no se presentan como audio oficial de Toy.
 
@@ -20,8 +20,8 @@ Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 pa
 
 Los cambios ejecutan `Godot project tests` automáticamente: importa recursos y hace un smoke test de la escena, sin crear APK. Después de revisar el ZIP/proyecto y dar aprobación, se lanza manualmente `Export Android APK (manual after visual approval)`. Pasos completos: [TEST_AND_APK_FLOW.md](TEST_AND_APK_FLOW.md).
 
-## Construir APK
+## Flujo de revisión y APK
 
-GitHub Actions ejecuta el workflow `.github/workflows/android-apk.yml` al subir cambios a `main`, o manualmente desde Actions. Produce un APK debug arm64 descargable como artefacto. Es de depuración, no para Play Store.
+Cada push ejecuta únicamente `.github/workflows/godot-test.yml`: importa recursos, arranca la escena y publica un ZIP de revisión del proyecto. **No genera APK.** El empaquetado del APK está aislado en `.github/workflows/android-apk.yml`, con `workflow_dispatch` solamente; debe activarse después de que Chapio apruebe explícitamente la versión visual. Produce un APK debug arm64, no apto para Play Store.
 
 El proyecto está configurado a pantalla completa e inmersiva en orientación paisaje. Los controles principales son táctiles; no hace falta teclado ni ratón. Debe probarse en el teléfono: un build exitoso por sí solo no valida gestos, rendimiento ni apariencia.
