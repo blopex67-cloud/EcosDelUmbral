@@ -55,6 +55,7 @@ func _ready() -> void:
 	_build_animatronic()
 	_build_hud()
 	_setup_audio()
+	_validate_loaded_audio()
 	_build_lobby()
 
 func _build_world() -> void:
@@ -80,7 +81,7 @@ func _build_world() -> void:
 	wood_mat = _texture_material("res://assets/textures/wood_albedo.jpg", "res://assets/textures/wood_normal.jpg", 0.68)
 	wood_mat.uv1_scale = Vector3(3,3,1)
 	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
-	var floor_mesh := _solid_box(Vector3(-2, -0.3, -8), Vector3(160, 0.6, 60), Color.WHITE, false)
+	var floor_mesh := _solid_box(Vector3(-2, -0.3, -8), Vector3(160, 0.6, 60), Color.WHITE, true)
 	floor_mesh.material_override = floor_mat
 	_solid_box(Vector3(-2, 5.1, -8), Vector3(160, 0.5, 60), Color(0.13, 0.10, 0.075), false)
 	# Openings connect the dining room to three substantial walkable corridors.
@@ -360,6 +361,8 @@ func _build_player() -> void:
 	player = CharacterBody3D.new()
 	player.name = "Player"
 	player.collision_mask = 3
+	player.floor_snap_length = 0.28
+	player.safe_margin = 0.03
 	player.position = Vector3(0, 0.05, 8)
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.34
@@ -414,9 +417,19 @@ func _build_animatronic() -> void:
 			var idle_clip := _find_animation_name(anim_player,"Idle")
 			if idle_clip != "": anim_player.play(idle_clip)
 	else:
-		push_warning("The Mimic GLB unavailable; placeholder fallback used.")
-		_add_sphere(animatronic,Vector3(0,0.9,0),Vector3(0.42,0.65,0.35),Color(0.26,0.12,0.11))
+		push_error("MIMIC_GLB_LOAD_FAILED: res://assets/models/the_mimic_dlc.glb")
 	add_child(animatronic)
+	var loaded_mesh_count := _count_mesh_instances(animatronic)
+	if packed != null and loaded_mesh_count > 0:
+		print("MIMIC_MODEL_LOADED meshes=%d" % loaded_mesh_count)
+	else:
+		push_error("MIMIC_MODEL_HAS_NO_MESHES")
+
+func _count_mesh_instances(node: Node) -> int:
+	var count := 1 if node is MeshInstance3D and (node as MeshInstance3D).mesh != null else 0
+	for child in node.get_children():
+		count += _count_mesh_instances(child)
+	return count
 
 func _apply_smooth_mimic_shader(node: Node) -> void:
 	# Retains the model's own texture while using a roughness-tuned smooth PBR shader.
@@ -594,6 +607,22 @@ func _setup_audio() -> void:
 	laugh_alt_player.unit_size = 6.0
 	animatronic.add_child(laugh_alt_player)
 
+func _validate_loaded_audio() -> void:
+	var missing: Array[String] = []
+	if ambience_player.stream == null: missing.append("pizzeria_horror_ambience.mp3")
+	if footstep_a.stream == null or footstep_b.stream == null: missing.append("player_step.ogg")
+	if flashlight_audio.stream == null: missing.append("flashlight_click.mp3")
+	if horror_player.stream == null: missing.append("horror_sting.mp3")
+	if monster_growl_player.stream == null: missing.append("monster_growl.mp3")
+	if toy_voice_player.stream == null: missing.append("toy_hello.mp3")
+	if laugh_player.stream == null: missing.append("toy_giggle.mp3")
+	if laugh_alt_player.stream == null: missing.append("creepy_laugh.mp3")
+	if robot_step_a.stream == null or robot_step_b.stream == null: missing.append("robot_step.ogg")
+	if missing.is_empty():
+		print("GAME_AUDIO_ASSETS_LOADED")
+	else:
+		push_error("GAME_AUDIO_ASSETS_MISSING: " + ", ".join(missing))
+
 func _make_robot_step_player(vol: float) -> AudioStreamPlayer3D:
 	var player_node := AudioStreamPlayer3D.new()
 	player_node.stream = load("res://assets/audio/robot_step.ogg")
@@ -716,7 +745,10 @@ func _process(delta: float) -> void:
 	var speed := 3.4 if sprinting else 2.25
 	player.velocity.x = move.x * speed
 	player.velocity.z = move.z * speed
-	player.velocity.y = -0.25
+	if not player.is_on_floor():
+		player.velocity.y -= 9.8 * delta
+	else:
+		player.velocity.y = -0.2
 	player.move_and_slide()
 	if move.length() > 0.15:
 		walk_timer -= delta
