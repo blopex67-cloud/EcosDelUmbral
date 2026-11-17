@@ -362,7 +362,7 @@ func _build_original_party_props() -> void:
 	_add_original_mascot_mask(Vector3(4.8,2.25,-19.0),Color(0.40,0.35,0.19),2)
 	# Crumpled party hats and boxed party snacks on selected tables.
 	for i in [0,3,6,9]:
-		var p := [Vector3(-16,0,-3),Vector3(-8,0,-3),Vector3(0,0,-3),Vector3(8,0,-3),Vector3(16,0,-3),Vector3(-16,0,6),Vector3(-8,0,6),Vector3(0,0,6),Vector3(8,0,6),Vector3(16,0,6)][i]
+		var p: Vector3 = [Vector3(-16,0,-3),Vector3(-8,0,-3),Vector3(0,0,-3),Vector3(8,0,-3),Vector3(16,0,-3),Vector3(-16,0,6),Vector3(-8,0,6),Vector3(0,0,6),Vector3(8,0,6),Vector3(16,0,6)][i]
 		_add_box_child(self,p+Vector3(-0.34,0.82,-0.14),Vector3(0.58,0.11,0.42),Color(0.45,0.16,0.07))
 		_add_cylinder(p+Vector3(0.38,0.92,-0.1),0.12,0.16,banner_colors[i % banner_colors.size()],16)
 
@@ -963,7 +963,8 @@ func _toggle_cctv_filter() -> void:
 		camera_filter_button.text = "CCTV ON" if camera_filter_enabled else "CCTV"
 	if is_instance_valid(threat_label) and camera_filter_enabled:
 		threat_label.text = "CAM 01  •  REC ●"
-	_set_status("Filtro CCTV activado" if camera_filter_enabled else "Filtro CCTV apagado")
+	if is_instance_valid(threat_label) and not camera_filter_enabled:
+		threat_label.text = "SE OYEN PASOS LEJANOS"
 
 func _toggle_flashlight() -> void:
 	lamp_on = not lamp_on
