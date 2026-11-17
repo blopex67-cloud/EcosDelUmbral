@@ -40,8 +40,9 @@ jobs:
           timeout 25s godot --headless --path . --quit-after 8 2>&1 | tee smoke.log
           grep -q 'PIZZERIA_FREE_SCENE_READY' smoke.log
           grep -q 'PIZZERIA_CORRIDORS_V2_READY' smoke.log
-          grep -q 'CC0_FURNITURE_LOADED tables=10 chairs=20' smoke.log
+          grep -q 'LOWPOLY_FURNITURE_READY tables=10 chairs=20 table_triangles=72 chair_triangles=72 draw_calls=2' smoke.log
           grep -q 'OPTIONAL_CCTV_FILTER_READY' smoke.log
+          grep -q 'BATCHED_EMISSIVE_LEDS_READY' smoke.log
           grep -q 'MIMIC_MODEL_LOADED' smoke.log
           grep -q 'GAME_AUDIO_ASSETS_LOADED' smoke.log
           if grep -E 'SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid get index|MIMIC_GLB_LOAD_FAILED|MIMIC_MODEL_HAS_NO_MESHES|GAME_AUDIO_ASSETS_MISSING' smoke.log; then

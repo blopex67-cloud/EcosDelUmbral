@@ -25,6 +25,8 @@ var stick_center := Vector2.ZERO
 var stick_radius := 82.0
 var hud_layer: CanvasLayer
 var floor_mat: StandardMaterial3D
+var led_material_cache: Dictionary = {}
+var led_instance_data: Dictionary = {}
 var wall_mat: StandardMaterial3D
 var wood_mat: StandardMaterial3D
 var stick_base: Panel
@@ -276,10 +278,18 @@ func _build_world() -> void:
 		light.shadow_enabled = false
 		add_child(light)
 	# Neon strips with emissive material + subtle low-cost coloured light.
+	# New emissive LED accents — visible strips only; no extra dynamic lights or shadows.
+	_add_led_strip(Vector3(0,0.77,-16.05),Vector3(16.0,0.055,0.06),Color(0.03,0.86,1.0))
+	_add_led_strip(Vector3(-8.72,1.05,-18.7),Vector3(0.06,0.055,3.6),Color(1.0,0.28,0.035))
+	_add_led_strip(Vector3(8.72,1.05,-18.7),Vector3(0.06,0.055,3.6),Color(1.0,0.28,0.035))
+	_add_led_strip(Vector3(-4.0,4.75,1.5),Vector3(0.08,0.035,27.0),Color(0.02,0.62,0.96))
+	_add_led_strip(Vector3(4.0,4.75,1.5),Vector3(0.08,0.035,27.0),Color(0.92,0.045,0.25))
+	_add_led_strip(Vector3(0,4.74,-18.0),Vector3(12.0,0.035,0.08),Color(0.95,0.48,0.055))
 	_add_led_strip(Vector3(0,4.25,-12.55), Vector3(40,0.12,0.07), Color(0.05,0.88,1.0))
 	_add_led_strip(Vector3(0,3.95,12.55), Vector3(36,0.10,0.06), Color(1.0,0.08,0.36))
 	_add_led_strip(Vector3(-23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.36,0.12,1.0))
 	_add_led_strip(Vector3(23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.05,0.82,0.62))
+	_flush_led_strips()
 
 func _build_original_stage_set() -> void:
 	# Layered velvet-like curtains and custom backstage sign, no franchise branding.
@@ -301,31 +311,88 @@ func _build_original_stage_set() -> void:
 	add_child(sign)
 
 func _build_dining_furniture() -> void:
-	var table_scene := load("res://assets/models/props/dining_table/dining_table.gltf") as PackedScene
-	var chair_scene := load("res://assets/models/props/dining_chair/dining_chair.gltf") as PackedScene
-	if table_scene == null or chair_scene == null:
-		push_error("CC0_DINING_FURNITURE_LOAD_FAILED")
+	# Flat-shaded, untextured CC0-style furniture meshes: low triangle count and one draw per type via MultiMesh.
+	var table_mesh := _make_box_furniture_mesh("table")
+	var chair_mesh := _make_box_furniture_mesh("chair")
+	if table_mesh == null or chair_mesh == null:
+		push_error("LOWPOLY_FURNITURE_MESH_BUILD_FAILED")
 		return
 	var table_positions: Array[Vector3] = [
 		Vector3(-16,0,-3), Vector3(-8,0,-3), Vector3(0,0,-3), Vector3(8,0,-3), Vector3(16,0,-3),
 		Vector3(-16,0,6), Vector3(-8,0,6), Vector3(0,0,6), Vector3(8,0,6), Vector3(16,0,6)]
+	var tables := MultiMesh.new()
+	tables.transform_format = MultiMesh.TRANSFORM_3D
+	tables.mesh = table_mesh
+	tables.instance_count = table_positions.size()
 	for i in range(table_positions.size()):
-		var p := table_positions[i]
-		var table := table_scene.instantiate() as Node3D
-		table.name = "CC0_DiningTable_%02d" % i
-		table.position = p
-		table.scale = Vector3(1.12, 1.0, 1.12)
-		add_child(table)
-		_add_static_box_collision(p + Vector3(0,0.39,0), Vector3(2.25,0.78,1.28), "DiningTableCollider_%02d" % i)
-		# Two photoreal 1K chairs per table on the aisle side, leaving clear routes between rows.
-		for side in [-1.0, 1.0]:
-			var seat := chair_scene.instantiate() as Node3D
-			seat.name = "CC0_DiningChair_%02d_%s" % [i, "L" if side < 0.0 else "R"]
-			seat.position = p + Vector3(side * 0.82, 0, 0.92)
-			seat.rotation.y = PI
-			add_child(seat)
-			_add_static_box_collision(seat.position + Vector3(0,0.47,0), Vector3(0.53,0.94,0.58), "ChairCollider_%02d" % i)
-	print("CC0_FURNITURE_LOADED tables=%d chairs=%d" % [table_positions.size(), table_positions.size() * 2])
+		var p: Vector3 = table_positions[i]
+		tables.set_instance_transform(i, Transform3D(Basis.IDENTITY, p))
+		_add_static_box_collision(p + Vector3(0,0.43,0), Vector3(2.18,0.86,1.25), "LowPolyTableCollider_%02d" % i)
+	var table_instance := MultiMeshInstance3D.new()
+	table_instance.name = "LowPolyCC0DiningTables"
+	table_instance.multimesh = tables
+	add_child(table_instance)
+	var chair_transforms: Array[Transform3D] = []
+	for i in range(table_positions.size()):
+		var p: Vector3 = table_positions[i]
+		for side in [-1.0,1.0]:
+			var chair_pos := p + Vector3(side*0.80,0,0.90)
+			chair_transforms.append(Transform3D(Basis(Vector3.UP, PI), chair_pos))
+			_add_static_box_collision(chair_pos + Vector3(0,0.46,0), Vector3(0.50,0.92,0.54), "LowPolyChairCollider_%02d_%s" % [i,"L" if side < 0.0 else "R"])
+	var chairs := MultiMesh.new()
+	chairs.transform_format = MultiMesh.TRANSFORM_3D
+	chairs.mesh = chair_mesh
+	chairs.instance_count = chair_transforms.size()
+	for i in range(chair_transforms.size()): chairs.set_instance_transform(i, chair_transforms[i])
+	var chair_instance := MultiMeshInstance3D.new()
+	chair_instance.name = "LowPolyCC0DiningChairs"
+	chair_instance.multimesh = chairs
+	add_child(chair_instance)
+	print("LOWPOLY_FURNITURE_READY tables=%d chairs=%d table_triangles=72 chair_triangles=72 draw_calls=2" % [table_positions.size(),chair_transforms.size()])
+
+func _make_box_furniture_mesh(kind: String) -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	if kind == "table":
+		_add_colored_box(surface,Vector3(0,0.78,0),Vector3(2.24,0.12,1.28),Color(0.56,0.32,0.17))
+		_add_colored_box(surface,Vector3(0,0.69,0),Vector3(2.05,0.08,1.12),Color(0.30,0.13,0.075))
+		_add_colored_box(surface,Vector3(-0.98,0.38,-0.49),Vector3(0.10,0.76,0.10),Color(0.23,0.15,0.11))
+		_add_colored_box(surface,Vector3(0.98,0.38,-0.49),Vector3(0.10,0.76,0.10),Color(0.23,0.15,0.11))
+		_add_colored_box(surface,Vector3(-0.98,0.38,0.49),Vector3(0.10,0.76,0.10),Color(0.23,0.15,0.11))
+		_add_colored_box(surface,Vector3(0.98,0.38,0.49),Vector3(0.10,0.76,0.10),Color(0.23,0.15,0.11))
+	else:
+		_add_colored_box(surface,Vector3(0,0.48,0),Vector3(0.56,0.12,0.54),Color(0.58,0.13,0.09))
+		_add_colored_box(surface,Vector3(0,0.83,0.22),Vector3(0.56,0.62,0.10),Color(0.49,0.085,0.065))
+		for x in [-0.21,0.21]:
+			for z in [-0.20,0.20]:
+				_add_colored_box(surface,Vector3(x,0.23,z),Vector3(0.075,0.46,0.075),Color(0.22,0.16,0.12))
+	surface.generate_normals()
+	var mesh := surface.commit()
+	var material := StandardMaterial3D.new()
+	material.vertex_color_use_as_albedo = true
+	material.roughness = 0.84
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh.surface_set_material(0,material)
+	return mesh
+
+func _add_colored_box(surface: SurfaceTool, center: Vector3, size: Vector3, color: Color) -> void:
+	var h := size * 0.5
+	var faces := [
+		[Vector3.RIGHT,Vector3(h.x,-h.y,-h.z),Vector3(h.x,h.y,-h.z),Vector3(h.x,h.y,h.z),Vector3(h.x,-h.y,h.z)],
+		[Vector3.LEFT,Vector3(-h.x,-h.y,h.z),Vector3(-h.x,h.y,h.z),Vector3(-h.x,h.y,-h.z),Vector3(-h.x,-h.y,-h.z)],
+		[Vector3.UP,Vector3(-h.x,h.y,-h.z),Vector3(-h.x,h.y,h.z),Vector3(h.x,h.y,h.z),Vector3(h.x,h.y,-h.z)],
+		[Vector3.DOWN,Vector3(-h.x,-h.y,h.z),Vector3(-h.x,-h.y,-h.z),Vector3(h.x,-h.y,-h.z),Vector3(h.x,-h.y,h.z)],
+		[Vector3.BACK,Vector3(h.x,-h.y,h.z),Vector3(h.x,h.y,h.z),Vector3(-h.x,h.y,h.z),Vector3(-h.x,-h.y,h.z)],
+		[Vector3.FORWARD,Vector3(-h.x,-h.y,-h.z),Vector3(-h.x,h.y,-h.z),Vector3(h.x,h.y,-h.z),Vector3(h.x,-h.y,-h.z)]]
+	for face in faces:
+		var normal: Vector3 = face[0]
+		var a: Vector3 = face[1] + center
+		var b: Vector3 = face[2] + center
+		var c: Vector3 = face[3] + center
+		var d: Vector3 = face[4] + center
+		for vertex in [a,b,c,a,c,d]:
+			surface.set_color(color)
+			surface.add_vertex(vertex)
 
 func _add_static_box_collision(pos: Vector3, size: Vector3, node_name: String) -> void:
 	var body := StaticBody3D.new()
@@ -439,18 +506,40 @@ func _add_balloon_cluster(origin: Vector3) -> void:
 	add_child(inst)
 
 func _add_led_strip(pos: Vector3, size: Vector3, color: Color) -> void:
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = size
-	mesh.mesh = box
-	mesh.position = pos
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.emission_enabled = true
-	mat.emission = color
-	mat.emission_energy_multiplier = 2.2
-	mesh.material_override = mat
-	add_child(mesh)
+	# Store transforms by color and render each color as one MultiMesh draw call.
+	var key := color.to_html(false)
+	if not led_instance_data.has(key): led_instance_data[key] = {"color":color,"transforms":[]}
+	var basis := Basis(Vector3(size.x,0,0),Vector3(0,size.y,0),Vector3(0,0,size.z))
+	led_instance_data[key]["transforms"].append(Transform3D(basis,pos))
+
+func _flush_led_strips() -> void:
+	var unit_box := BoxMesh.new()
+	unit_box.size = Vector3.ONE
+	for key in led_instance_data:
+		var data: Dictionary = led_instance_data[key]
+		var color: Color = data["color"]
+		var transforms: Array = data["transforms"]
+		var material := StandardMaterial3D.new()
+		material.albedo_color = color
+		material.emission_enabled = true
+		material.emission = color
+		material.emission_energy_multiplier = 2.2
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		unit_box = unit_box.duplicate() as BoxMesh
+		unit_box.material = material
+		var multi := MultiMesh.new()
+		multi.transform_format = MultiMesh.TRANSFORM_3D
+		multi.mesh = unit_box
+		multi.instance_count = transforms.size()
+		for i in range(transforms.size()): multi.set_instance_transform(i,transforms[i])
+		var instance := MultiMeshInstance3D.new()
+		instance.name = "BatchedEmissiveLED_%s" % key
+		instance.multimesh = multi
+		add_child(instance)
+	var led_count := 0
+	for led_data in led_instance_data.values(): led_count += led_data["transforms"].size()
+	print("BATCHED_EMISSIVE_LEDS_READY strips=%d colors=%d" % [led_count,led_instance_data.size()])
+	led_instance_data.clear()
 
 func _add_neon_light(pos: Vector3, color: Color, energy: float, reach: float) -> void:
 	var light := OmniLight3D.new()
@@ -692,7 +781,7 @@ func _make_button(root: Control, text: String, pos: Vector2, size: Vector2) -> B
 
 func _setup_audio() -> void:
 	ambience_player = AudioStreamPlayer.new()
-	ambience_player.stream = load("res://assets/audio/pizzeria_horror_ambience.mp3")
+	ambience_player.stream = load("res://assets/audio/pizzeria_horror_ambience.ogg")
 	ambience_player.volume_db = -19.0
 	add_child(ambience_player)
 	ambience_player.finished.connect(func():
@@ -745,7 +834,7 @@ func _setup_audio() -> void:
 
 func _validate_loaded_audio() -> void:
 	var missing: Array[String] = []
-	if ambience_player.stream == null: missing.append("pizzeria_horror_ambience.mp3")
+	if ambience_player.stream == null: missing.append("pizzeria_horror_ambience.ogg")
 	if footstep_a.stream == null or footstep_b.stream == null: missing.append("player_step.ogg")
 	if flashlight_audio.stream == null: missing.append("flashlight_click.mp3")
 	if horror_player.stream == null: missing.append("horror_sting.mp3")

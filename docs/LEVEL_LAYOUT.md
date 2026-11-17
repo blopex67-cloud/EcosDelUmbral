@@ -10,8 +10,8 @@
 
 ## Reglas de composición
 
-1. Las mesas quedan en una cuadrícula repetible; cada grupo conserva corredores para pasar y que no tape la cámara en primera persona.
-2. Los muebles importados son decorativos con colisionadores simples y baratos; no se crean colliders triangulares.
+1. Las mesas low-poly quedan en una cuadrícula repetible; cada grupo conserva corredores para pasar y que no tape la cámara en primera persona.
+2. Los muebles low-poly se comparten mediante dos MultiMesh (mesa/silla), con colisionadores de caja sencillos; no se crean colliders triangulares.
 3. Mantener las rutas principales a unos 2 m de ancho o más, evitando callejones sin salida no intencionados.
 4. Usar muros estructurales separados de molduras, tuberías y cortinas; las piezas decorativas no deben cerrar pasos.
 5. El terror se obtiene con luces, siluetas, audio, desgaste y cámaras genéricas, no copiando personajes, logos, poster art ni diseños identificables de FNAF.
