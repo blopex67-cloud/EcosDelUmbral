@@ -958,7 +958,7 @@ func _process(delta: float) -> void:
 		animatronic.velocity.z = desired.z * chase_speed
 		animatronic.velocity.y = -0.2
 		animatronic.move_and_slide()
-		var moved := animatronic.get_position_delta().length()
+		var moved: float = animatronic.get_position_delta().length()
 		if moved < 0.018 and goal_distance > 1.2:
 			ai_stuck_timer += delta
 		else:
