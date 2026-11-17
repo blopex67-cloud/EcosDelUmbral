@@ -47,6 +47,30 @@ var robot_step_b: AudioStreamPlayer3D
 var voice_timer := 13.0
 var horror_timer := 37.0
 var player_step_flip := false
+var camera_filter_enabled := false
+var camera_filter_overlay: ColorRect
+var camera_filter_button: Button
+const CCTV_FILTER_SHADER := """
+shader_type canvas_item;
+uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
+void fragment() {
+ vec2 uv = SCREEN_UV;
+ float rgb_shift = SCREEN_PIXEL_SIZE.x * 1.7;
+ vec3 sampled;
+ sampled.r = texture(screen_texture, uv + vec2(rgb_shift, 0.0)).r;
+ sampled.g = texture(screen_texture, uv).g;
+ sampled.b = texture(screen_texture, uv - vec2(rgb_shift, 0.0)).b;
+ float gray = dot(sampled, vec3(0.299, 0.587, 0.114));
+ vec3 monochrome = vec3(gray * 0.78, gray * 0.92, gray * 0.84);
+ float scan = 0.92 + 0.08 * sin(uv.y * 720.0 * 3.14159);
+ float noise = fract(sin(dot(floor(uv * vec2(420.0, 260.0)) + vec2(TIME * 31.0), vec2(12.9898,78.233))) * 43758.5453);
+ float grain = (noise - 0.5) * 0.055;
+ float vignette = smoothstep(1.1, 0.22, length((uv - 0.5) * vec2(1.0,0.88)));
+ float interference = step(0.998, fract(TIME * 0.17)) * step(0.88, noise) * 0.12;
+ vec3 cctv = (monochrome * scan + grain + interference) * (0.64 + 0.36 * vignette);
+ COLOR = vec4(mix(sampled, cctv, 0.92), 1.0);
+}
+"""
 
 func _ready() -> void:
 	print("PIZZERIA_FREE_SCENE_READY")
@@ -188,30 +212,15 @@ func _build_world() -> void:
 	counter.material_override = wood_mat
 	_solid_box(Vector3(-9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
 	_solid_box(Vector3(9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
-	# Mesas, asientos y franjas de color con colisión baja y sencilla.
-	for p in [Vector3(-16,0,-3), Vector3(-8,0,-3), Vector3(0,0,-3), Vector3(8,0,-3), Vector3(16,0,-3), Vector3(-16,0,6), Vector3(-8,0,6), Vector3(0,0,6), Vector3(8,0,6), Vector3(16,0,6)]:
-		var tabletop := _solid_box(p + Vector3(0,0.9,0), Vector3(3.1,0.18,2.0), Color(0.72,0.70,0.63), false)
-		tabletop.material_override = _material(Color(0.74,0.72,0.66))
-		# Tablecloth has soft folds and shaded edges similar to the supplied reference.
-		_solid_box(p + Vector3(0,0.99,0),Vector3(3.0,0.08,1.96),Color(0.79,0.77,0.69),false)
-		_solid_box(p + Vector3(0,0.73,0),Vector3(2.94,0.42,1.90),Color(0.68,0.66,0.59),false)
-		for dx in [-1.40,1.40]:
-			_solid_box(p+Vector3(dx,0.55,0),Vector3(0.055,0.72,1.92),Color(0.78,0.76,0.69),false)
-		for lx in [-1.28,1.28]:
-			for lz in [-0.78,0.78]:
-				_add_cylinder(p+Vector3(lx,0.42,lz),0.075,0.84,Color(0.24,0.21,0.18),12)
-		for sx in [-1.0, 1.0]:
-			var chair_pos: Vector3 = p + Vector3(sx*1.45,0.48,0)
-			_add_cylinder(chair_pos+Vector3(0,0.08,0),0.34,0.16,Color(0.27,0.055,0.05),20)
-			_add_sphere(self,chair_pos+Vector3(0,0.67,0.28),Vector3(0.29,0.34,0.09),Color(0.32,0.07,0.06))
-			for lx in [-0.23,0.23]:
-				for lz in [-0.23,0.23]:
-					_add_cylinder(chair_pos+Vector3(lx,-0.24,lz),0.035,0.48,Color(0.22,0.19,0.16),10)
+	# Real CC0 scanned furniture, instantiated at a deliberate dining-room grid.
+	_build_dining_furniture()
+	_build_original_party_props()
 	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
 	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065),true,2)
 	stage.material_override = wood_mat
 	for x in [-7.0,-3.5,0.0,3.5,7.0]:
 		_solid_box(Vector3(x,2.9,-20.7),Vector3(0.22,4.0,0.18),Color(0.28,0.08,0.075),false)
+	_build_original_stage_set()
 	# Cocina trasera con aperturas laterales.
 	_solid_box(Vector3(-15.5,2.1,-12.5),Vector3(17,4.2,0.42),Color(0.28,0.24,0.20))
 	_solid_box(Vector3(15.5,2.1,-12.5),Vector3(17,4.2,0.42),Color(0.28,0.24,0.20))
@@ -271,6 +280,117 @@ func _build_world() -> void:
 	_add_led_strip(Vector3(0,3.95,12.55), Vector3(36,0.10,0.06), Color(1.0,0.08,0.36))
 	_add_led_strip(Vector3(-23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.36,0.12,1.0))
 	_add_led_strip(Vector3(23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.05,0.82,0.62))
+
+func _build_original_stage_set() -> void:
+	# Layered velvet-like curtains and custom backstage sign, no franchise branding.
+	for x in [-8.5,-6.8,6.8,8.5]:
+		var panel := _solid_box(Vector3(x,2.7,-21.25),Vector3(1.45,3.6,0.20),Color(0.37,0.025,0.045),false)
+		panel.material_override = _material(Color(0.30,0.015,0.025))
+	for x in [-8.8,8.8]:
+		_add_box_child(self,Vector3(x,3.0,-21.1),Vector3(0.3,4.2,0.45),Color(0.68,0.44,0.18))
+	_add_box_child(self,Vector3(0,4.3,-21.2),Vector3(17.2,0.26,0.35),Color(0.55,0.34,0.14))
+	_add_box_child(self,Vector3(0,4.0,-21.0),Vector3(5.8,0.72,0.12),Color(0.11,0.12,0.12))
+	# Lettering is original generic text, not a FNAF logo or protected artwork.
+	var sign := Label3D.new()
+	sign.text = "PARTY STAGE"
+	sign.font_size = 42
+	sign.pixel_size = 0.012
+	sign.modulate = Color(0.91,0.72,0.42)
+	sign.position = Vector3(0,4.0,-20.92)
+	sign.rotation.y = PI
+	add_child(sign)
+
+func _build_dining_furniture() -> void:
+	var table_scene := load("res://assets/models/props/dining_table/dining_table.gltf") as PackedScene
+	var chair_scene := load("res://assets/models/props/dining_chair/dining_chair.gltf") as PackedScene
+	if table_scene == null or chair_scene == null:
+		push_error("CC0_DINING_FURNITURE_LOAD_FAILED")
+		return
+	var table_positions: Array[Vector3] = [
+		Vector3(-16,0,-3), Vector3(-8,0,-3), Vector3(0,0,-3), Vector3(8,0,-3), Vector3(16,0,-3),
+		Vector3(-16,0,6), Vector3(-8,0,6), Vector3(0,0,6), Vector3(8,0,6), Vector3(16,0,6)]
+	for i in range(table_positions.size()):
+		var p := table_positions[i]
+		var table := table_scene.instantiate() as Node3D
+		table.name = "CC0_DiningTable_%02d" % i
+		table.position = p
+		table.scale = Vector3(1.12, 1.0, 1.12)
+		add_child(table)
+		_add_static_box_collision(p + Vector3(0,0.39,0), Vector3(2.25,0.78,1.28), "DiningTableCollider_%02d" % i)
+		# Two photoreal 1K chairs per table on the aisle side, leaving clear routes between rows.
+		for side in [-1.0, 1.0]:
+			var seat := chair_scene.instantiate() as Node3D
+			seat.name = "CC0_DiningChair_%02d_%s" % [i, "L" if side < 0.0 else "R"]
+			seat.position = p + Vector3(side * 0.82, 0, 0.92)
+			seat.rotation.y = PI
+			add_child(seat)
+			_add_static_box_collision(seat.position + Vector3(0,0.47,0), Vector3(0.53,0.94,0.58), "ChairCollider_%02d" % i)
+	print("CC0_FURNITURE_LOADED tables=%d chairs=%d" % [table_positions.size(), table_positions.size() * 2])
+
+func _add_static_box_collision(pos: Vector3, size: Vector3, node_name: String) -> void:
+	var body := StaticBody3D.new()
+	body.name = node_name
+	body.position = pos
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var collider := CollisionShape3D.new()
+	collider.shape = shape
+	body.add_child(collider)
+	add_child(body)
+
+func _build_original_party_props() -> void:
+	# Original generic party decorations — no FNAF character shapes, logos or copied art.
+	var banner_colors := [Color(0.63,0.035,0.055), Color(0.90,0.59,0.18), Color(0.045,0.25,0.31), Color(0.60,0.55,0.44)]
+	for i in range(8):
+		var x := -16.0 + float(i) * 4.6
+		var y := 3.55 + (0.34 if i % 2 == 0 else 0.0)
+		_add_party_triangle(Vector3(x,y,21.55),banner_colors[i % banner_colors.size()])
+	# Hand-painted birthday bunting and star shapes across the stage; bespoke procedural props.
+	for i in range(5):
+		var x := -7.2 + float(i) * 3.6
+		_add_box_child(self,Vector3(x,3.1,-21.63),Vector3(2.65,0.075,0.06),Color(0.19,0.12,0.10))
+		_add_star_prop(Vector3(x,3.55,-21.57),0.32,banner_colors[i % banner_colors.size()])
+	# Old stage monitors, microphone stands and generic animal-mask silhouettes, all original.
+	for side in [-1.0,1.0]:
+		var speaker := _solid_box(Vector3(side * 8.1,1.2,-19.2),Vector3(1.0,2.2,0.75),Color(0.12,0.14,0.15),false)
+		_add_box_child(self,Vector3(side * 8.1,1.2,-18.80),Vector3(0.66,1.45,0.04),Color(0.22,0.24,0.23))
+		_add_cylinder(Vector3(side * 2.8,1.38,-18.0),0.035,2.65,Color(0.38,0.38,0.36),24)
+		_add_sphere(self,Vector3(side * 2.8,2.75,-18.0),Vector3(0.12,0.11,0.12),Color(0.06,0.06,0.06))
+	# Generic stage mascot heads: distinct simple animal-like silhouettes, not franchise designs.
+	_add_original_mascot_mask(Vector3(-4.8,2.25,-19.0),Color(0.42,0.20,0.12),0)
+	_add_original_mascot_mask(Vector3(0.0,2.25,-19.0),Color(0.20,0.32,0.37),1)
+	_add_original_mascot_mask(Vector3(4.8,2.25,-19.0),Color(0.40,0.35,0.19),2)
+	# Crumpled party hats and boxed party snacks on selected tables.
+	for i in [0,3,6,9]:
+		var p := [Vector3(-16,0,-3),Vector3(-8,0,-3),Vector3(0,0,-3),Vector3(8,0,-3),Vector3(16,0,-3),Vector3(-16,0,6),Vector3(-8,0,6),Vector3(0,0,6),Vector3(8,0,6),Vector3(16,0,6)][i]
+		_add_box_child(self,p+Vector3(-0.34,0.82,-0.14),Vector3(0.58,0.11,0.42),Color(0.45,0.16,0.07))
+		_add_cylinder(p+Vector3(0.38,0.92,-0.1),0.12,0.16,banner_colors[i % banner_colors.size()],16)
+
+func _add_party_triangle(pos: Vector3, color: Color) -> void:
+	var mesh := MeshInstance3D.new()
+	var prism := PrismMesh.new()
+	prism.size = Vector3(0.72,0.85,0.045)
+	mesh.mesh = prism
+	mesh.position = pos
+	mesh.material_override = _material(color)
+	add_child(mesh)
+
+func _add_star_prop(pos: Vector3, size: float, color: Color) -> void:
+	var star := _add_sphere(self,pos,Vector3(size,size,size*0.20),color)
+	star.name = "OriginalPartyStar"
+
+func _add_original_mascot_mask(pos: Vector3, color: Color, variant: int) -> void:
+	var root := Node3D.new()
+	root.name = "OriginalGenericMascotMask_%d" % variant
+	root.position = pos
+	add_child(root)
+	_add_sphere(root,Vector3.ZERO,Vector3(0.42,0.48,0.20),color)
+	var ear_scale := Vector3(0.13,0.25,0.11) if variant != 1 else Vector3(0.11,0.38,0.10)
+	for side in [-1.0,1.0]:
+		_add_sphere(root,Vector3(side*0.29,0.40,0),ear_scale,Color(color.r*0.7,color.g*0.7,color.b*0.7))
+		_add_sphere(root,Vector3(side*0.15,0.04,0.185),Vector3(0.075,0.095,0.035),Color(0.83,0.78,0.60))
+		_add_sphere(root,Vector3(side*0.15,0.04,0.215),Vector3(0.032,0.048,0.02),Color(0.025,0.025,0.02))
+	_add_sphere(root,Vector3(0,-0.17,0.22),Vector3(0.24,0.12,0.08),Color(0.10,0.065,0.055))
 
 func _add_checker_band(center: Vector3, size: Vector3, count: int, horizontal: bool) -> void:
 	var box := BoxMesh.new()
@@ -477,6 +597,18 @@ func _build_hud() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud_layer.add_child(root)
+	camera_filter_overlay = ColorRect.new()
+	camera_filter_overlay.name = "OptionalCCTVFilter"
+	camera_filter_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	camera_filter_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	camera_filter_overlay.visible = false
+	var cctv_shader := Shader.new()
+	cctv_shader.code = CCTV_FILTER_SHADER
+	var cctv_material := ShaderMaterial.new()
+	cctv_material.shader = cctv_shader
+	camera_filter_overlay.material = cctv_material
+	root.add_child(camera_filter_overlay)
+	print("OPTIONAL_CCTV_FILTER_READY")
 	hud = Label.new()
 	hud.text = "PIZZERÍA CERRADA  •  EXPLORA Y SOBREVIVE"
 	hud.anchor_left = 0.02
@@ -523,10 +655,14 @@ func _build_hud() -> void:
 	var initial_size := get_viewport().get_visible_rect().size
 	stick_center = Vector2(156,initial_size.y - 156)
 	_update_stick_visual()
-	var light_button := _make_button(root,"LINTERNA",Vector2(-230,-145),Vector2(112,62))
+	camera_filter_button = _make_button(root,"CCTV",Vector2(-358,-145),Vector2(104,62))
+	camera_filter_button.anchor_left = 1.0; camera_filter_button.anchor_right = 1.0
+	camera_filter_button.tooltip_text = "Activar o apagar filtro de cámara de seguridad"
+	camera_filter_button.pressed.connect(_toggle_cctv_filter)
+	var light_button := _make_button(root,"LINTERNA",Vector2(-244,-145),Vector2(112,62))
 	light_button.anchor_left = 1.0; light_button.anchor_right = 1.0
 	light_button.pressed.connect(_toggle_flashlight)
-	var sprint_button := _make_button(root,"CORRER",Vector2(-112,-145),Vector2(104,62))
+	var sprint_button := _make_button(root,"CORRER",Vector2(-122,-145),Vector2(104,62))
 	sprint_button.anchor_left = 1.0; sprint_button.anchor_right = 1.0
 	sprint_button.button_down.connect(func(): sprinting=true)
 	sprint_button.button_up.connect(func(): sprinting=false)
@@ -819,6 +955,15 @@ func _process(delta: float) -> void:
 		var c := overlay.color
 		c.a = maxf(0.0,c.a - delta*0.38)
 		overlay.color = c
+
+func _toggle_cctv_filter() -> void:
+	camera_filter_enabled = not camera_filter_enabled
+	if is_instance_valid(camera_filter_overlay): camera_filter_overlay.visible = camera_filter_enabled
+	if is_instance_valid(camera_filter_button):
+		camera_filter_button.text = "CCTV ON" if camera_filter_enabled else "CCTV"
+	if is_instance_valid(threat_label) and camera_filter_enabled:
+		threat_label.text = "CAM 01  •  REC ●"
+	_set_status("Filtro CCTV activado" if camera_filter_enabled else "Filtro CCTV apagado")
 
 func _toggle_flashlight() -> void:
 	lamp_on = not lamp_on

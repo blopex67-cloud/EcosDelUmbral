@@ -1,0 +1,12 @@
+Third-party game props (both CC0 1.0 Universal / Public Domain):
+
+Dining Table — Aron Łyczek, Poly Haven
+https://polyhaven.com/a/dining_table
+Downloaded in 1K glTF. 1,048 triangles.
+
+Dining Chair 02 — Poly Haven
+https://polyhaven.com/a/dining_chair_02
+Downloaded in 1K glTF. About 22,013 triangles per chair.
+
+Both assets are CC0 per Poly Haven's license: https://polyhaven.com/license
+All additional party decorations and stage props introduced in this project are original procedural meshes created for EcosDelUmbral and contain no FNAF character meshes, logos or artwork.
