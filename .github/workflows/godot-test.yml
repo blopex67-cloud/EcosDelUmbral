@@ -40,7 +40,11 @@ jobs:
           timeout 25s godot --headless --path . --quit-after 8 2>&1 | tee smoke.log
           grep -q 'PIZZERIA_FREE_SCENE_READY' smoke.log
           grep -q 'PIZZERIA_CORRIDORS_V2_READY' smoke.log
+          grep -q 'AI_ROUTE_FOLLOWER_READY' smoke.log
           grep -q 'LOWPOLY_FURNITURE_READY tables=10 chairs=20 table_triangles=72 chair_triangles=72 draw_calls=2' smoke.log
+          grep -q 'PIZZERIA_FNAF_STYLE_LAYOUT_READY' smoke.log
+          grep -q 'ENCLOSED_FNAF_INSPIRED_MAP_READY' smoke.log
+          grep -q 'CCTV_FILTER_DEFAULT_ON' smoke.log
           grep -q 'OPTIONAL_CCTV_FILTER_READY' smoke.log
           grep -q 'BATCHED_EMISSIVE_LEDS_READY' smoke.log
           grep -q 'MIMIC_MODEL_LOADED' smoke.log

@@ -7,7 +7,7 @@ Prototipo de fan game inspirado en Five Nights at Freddy's, hecho con Godot 4 pa
 - Lobby de entrada y pizzería móvil en horizontal a pantalla completa.
 - Distribución por zonas: comedor central, escenario, cocina, pasillo oeste de servicio y ala este con cruces y puertas metálicas. Incluye tuberías, luces prácticas y rutas amplias entre filas de mesas.
 - Mesas y sillas low-poly livianas, construidas como dos mallas compartidas y dibujadas con MultiMesh para minimizar llamadas de render. Se redujo la textura integrada del Mimic a 512×512 por mapa, se pasó la pista ambiental a OGG 64 kbps y se retiraron assets sin uso; objetivo: APK y memoria más ligeros. Decoración de fiesta y máscaras de mascotas genéricas hechas para el juego; sin logos ni modelos de personajes de FNAF.
-- Filtro de cámara CCTV opcional: escala de grises verdosa, scanlines, grano, leve separación de color y viñeta; se activa/desactiva desde el HUD. LEDs emisivos ornamentales en el escenario, marcos del comedor y pasillos, sin añadir luces dinámicas ni sombras.
+- Filtro de cámara CCTV activado desde el inicio de cada partida, con escala de grises verdosa, scanlines, grano, leve separación de color y viñeta; se puede apagar desde el HUD. LEDs emisivos ornamentales en el escenario, marcos del comedor y pasillos, sin añadir luces dinámicas ni sombras.
 - The Mimic de SpiderBight con shader PBR de acabado más suave y sus animaciones Idle, Walk, Run y jumpscare. Pisadas espaciales sincronizadas a los ciclos de animación.
 - Click de linterna, ambiente en loop, transiciones de terror, gruñidos distantes, risa de criatura y la frase infantil “hiya” como saludo juguetón del juguete. Son efectos licenciados de biblioteca; no se presentan como audio oficial de Toy.
 

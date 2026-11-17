@@ -49,7 +49,14 @@ var robot_step_b: AudioStreamPlayer3D
 var voice_timer := 13.0
 var horror_timer := 37.0
 var player_step_flip := false
-var camera_filter_enabled := false
+var ai_route_points: Array[Vector3] = []
+var ai_route_index := 0
+var ai_repath_timer := 0.0
+var ai_stuck_timer := 0.0
+var ai_steer_sign := 1.0
+var hud_top_panel: Panel
+var hud_center_label: Label
+var camera_filter_enabled := true
 var camera_filter_overlay: ColorRect
 var camera_filter_button: Button
 const CCTV_FILTER_SHADER := """
@@ -86,227 +93,142 @@ func _ready() -> void:
 
 func _build_world() -> void:
 	print("PIZZERIA_CORRIDORS_V2_READY")
+	print("PIZZERIA_FNAF_STYLE_LAYOUT_READY")
 	var env_node := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.008, 0.009, 0.012)
+	env.background_color = Color(0.006,0.008,0.009)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.56, 0.48)
-	env.ambient_light_energy = 0.80
+	env.ambient_light_color = Color(0.46,0.43,0.37)
+	env.ambient_light_energy = 0.54
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
-	env.glow_intensity = 0.18
-	env.glow_bloom = 0.025
+	env.glow_intensity = 0.24
+	env.glow_bloom = 0.035
 	env_node.environment = env
 	add_child(env_node)
-	# Texturas 1K con mapas normales, comprimidas en JPG para un APK ligero.
-	floor_mat = _texture_material("res://assets/textures/floor_checker.jpg", "res://assets/textures/floor_checker_normal.jpg", 0.92)
+	floor_mat = _texture_material("res://assets/textures/floor_checker.jpg","res://assets/textures/floor_checker_normal.jpg",0.91)
 	floor_mat.uv1_scale = Vector3(18.0,18.0,1.0)
-	wall_mat = _texture_material("res://assets/textures/wall_albedo.jpg", "res://assets/textures/wall_normal.jpg", 0.94)
-	wall_mat.uv1_scale = Vector3(10,4,1)
-	wood_mat = _texture_material("res://assets/textures/wood_albedo.jpg", "res://assets/textures/wood_normal.jpg", 0.68)
-	wood_mat.uv1_scale = Vector3(3,3,1)
-	# Gran comedor abierto para recorrer, con límites sólidos y decorado ligero.
-	var floor_mesh := _solid_box(Vector3(-2, -0.3, -8), Vector3(160, 0.6, 60), Color.WHITE, true)
-	floor_mesh.material_override = floor_mat
-	_solid_box(Vector3(-2, 5.1, -8), Vector3(160, 0.5, 60), Color(0.13, 0.10, 0.075), false)
-	# Openings connect the dining room to three substantial walkable corridors.
-	# North opening, 6 m wide, aligned with an old tiled service tunnel.
-	for segment in [
-		_solid_box(Vector3(-19,2.3,-22),Vector3(10,4.6,0.5),Color.WHITE),
-		_solid_box(Vector3(16,2.3,-22),Vector3(32,4.6,0.5),Color.WHITE),
-		_solid_box(Vector3(-8,2.3,22),Vector3(64,4.6,0.5),Color.WHITE),
-		_solid_box(Vector3(-24,2.3,-13),Vector3(0.5,4.6,18),Color.WHITE),
-		_solid_box(Vector3(-24,2.3,14),Vector3(0.5,4.6,16),Color.WHITE),
-		_solid_box(Vector3(24,2.3,-13),Vector3(0.5,4.6,18),Color.WHITE),
-		_solid_box(Vector3(24,2.3,14),Vector3(0.5,4.6,16),Color.WHITE),
-		_solid_box(Vector3(-64,2.3,0),Vector3(0.5,4.6,44),Color.WHITE),
-		_solid_box(Vector3(-10,2.3,-38),Vector3(112,4.6,0.5),Color.WHITE)]:
+	wall_mat = _texture_material("res://assets/textures/wall_albedo.jpg","res://assets/textures/wall_normal.jpg",0.88)
+	wall_mat.uv1_scale = Vector3(24.0,8.0,1.0)
+	wood_mat = _texture_material("res://assets/textures/wood_albedo.jpg","res://assets/textures/wood_normal.jpg",0.68)
+	wood_mat.uv1_scale = Vector3(8.0,8.0,1.0)
+	# One continuous enclosed footprint: 56 x 56 m; consistent floor/ceiling removes black gaps.
+	var floor := _solid_box(Vector3(0,-0.30,2),Vector3(56,0.60,56),Color.WHITE,true)
+	floor.material_override = floor_mat
+	var ceiling := _solid_box(Vector3(0,5.28,2),Vector3(56,0.38,56),Color(0.12,0.105,0.09),false)
+	ceiling.material_override = _material(Color(0.12,0.105,0.09))
+	# The dining room is central. Stage/back hall is north; security office is south.
+	# Solid outer envelope and continuous walls are split only at real, aligned doorways.
+	var wall_y := 2.48
+	var wall_h := 4.96
+	var wall_t := 0.42
+	var wall_segments: Array[Array] = [
+		# west and east perimeter walls, full length
+		[Vector3(-27.79,wall_y,2),Vector3(wall_t,wall_h,55.6)],[Vector3(27.79,wall_y,2),Vector3(wall_t,wall_h,55.6)],
+		# north wall with aligned passage into backstage at x=-4..4
+		[Vector3(-16,wall_y,-25.79),Vector3(23.6,wall_h,wall_t)],[Vector3(16,wall_y,-25.79),Vector3(23.6,wall_h,wall_t)],
+		# south perimeter
+		[Vector3(0,wall_y,29.79),Vector3(55.6,wall_h,wall_t)],
+		# dining room west partition with one door into west hall
+		[Vector3(-20,wall_y,-9.0),Vector3(wall_t,wall_h,10.0)],[Vector3(-20,wall_y,7.5),Vector3(wall_t,wall_h,9.0)],
+		# dining room east partition with matching east-hall door
+		[Vector3(20,wall_y,-9.0),Vector3(wall_t,wall_h,10.0)],[Vector3(20,wall_y,7.5),Vector3(wall_t,wall_h,9.0)],
+		# north dining wall: opening to the back corridor, centered on the stage
+		[Vector3(-12.25,wall_y,-14),Vector3(15.5,wall_h,wall_t)],[Vector3(12.25,wall_y,-14),Vector3(15.5,wall_h,wall_t)],
+		# south dining wall: central access to security corridor
+		[Vector3(-11.5,wall_y,12),Vector3(17.0,wall_h,wall_t)],[Vector3(11.5,wall_y,12),Vector3(17.0,wall_h,wall_t)],
+		# back corridor side walls (x -6..6), from stage to north service room
+		[Vector3(-6,wall_y,-20),Vector3(wall_t,wall_h,12.0)],[Vector3(6,wall_y,-20),Vector3(wall_t,wall_h,12.0)],
+		# stage/back corridor end walls: doorway at north, stage-side opening at south
+		[Vector3(-8.0,wall_y,-14),Vector3(4.0,wall_h,wall_t)],[Vector3(8.0,wall_y,-14),Vector3(4.0,wall_h,wall_t)],
+		# west/east side hallway caps at the back: doors feed the back corridor loop
+		[Vector3(-26.40,wall_y,-14),Vector3(2.8,wall_h,wall_t)],[Vector3(-21.60,wall_y,-14),Vector3(2.8,wall_h,wall_t)],
+		[Vector3(26.40,wall_y,-14),Vector3(2.8,wall_h,wall_t)],[Vector3(21.60,wall_y,-14),Vector3(2.8,wall_h,wall_t)],
+		# security office walls; entrance centered from dining through its short hall
+		[Vector3(-12,wall_y,24),Vector3(wall_t,wall_h,11.6)],[Vector3(12,wall_y,24),Vector3(wall_t,wall_h,11.6)],
+		[Vector3(-8.0,wall_y,18),Vector3(8.0,wall_h,wall_t)],[Vector3(8.0,wall_y,18),Vector3(8.0,wall_h,wall_t)],
+		# side-office access openings connect to a 4 m cross-corridor on each wing
+		[Vector3(-16,wall_y,20),Vector3(8.0,wall_h,wall_t)],[Vector3(-16,wall_y,28),Vector3(8.0,wall_h,wall_t)],
+		[Vector3(16,wall_y,20),Vector3(8.0,wall_h,wall_t)],[Vector3(16,wall_y,28),Vector3(8.0,wall_h,wall_t)],
+		# central security corridor side walls; it opens at both ends
+		[Vector3(-4,wall_y,15),Vector3(wall_t,wall_h,6.0)],[Vector3(4,wall_y,15),Vector3(wall_t,wall_h,6.0)],
+		# service alcove walls inside the back room, each door 2.5 m wide
+		[Vector3(-15,wall_y,-21),Vector3(18.0,wall_h,wall_t)],[Vector3(15,wall_y,-21),Vector3(18.0,wall_h,wall_t)]
+	]
+	for entry in wall_segments:
+		var segment := _solid_box(entry[0],entry[1],Color.WHITE,true)
 		segment.material_override = wall_mat
-	# Three connected walkable corridors branch off the dining room through visible doorways.
-	# Main west hall: first section opens directly from the dining room, then continues to an old service wing.
-	for segment in [
-		_solid_box(Vector3(-32,2.2,-2),Vector3(16,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(-32,2.2,6),Vector3(16,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(-52,2.2,-2),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(-52,2.2,6),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(-64,2.2,2),Vector3(0.42,4.4,8),Color.WHITE),
-		# northern branch connects through a 6m doorway in the west hall wall.
-		_solid_box(Vector3(-52,2.2,-22),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(-52,2.2,-2),Vector3(8.8,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(-42.6,2.2,-2),Vector3(2.8,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(-64,2.2,-12),Vector3(0.42,4.4,20),Color.WHITE)]:
-		segment.material_override = wall_mat
-	# New east service corridor opens from the dining room; a second side doorway returns to the hall.
-	for segment in [
-		_solid_box(Vector3(36,2.2,-4),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(36,2.2,4),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(48,2.2,-3),Vector3(0.42,4.4,2.0),Color.WHITE),
-		_solid_box(Vector3(48,2.2,3),Vector3(0.42,4.4,2.0),Color.WHITE)]:
-		segment.material_override = wall_mat
-	# East wing continues through the service door into a connected three-way corridor loop.
-	for segment in [
-		_solid_box(Vector3(60,2.2,-4),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(60,2.2,4),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(72,2.2,0),Vector3(0.42,4.4,8),Color.WHITE),
-		_solid_box(Vector3(60,2.2,-14),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(60,2.2,14),Vector3(24,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(48,2.2,-9),Vector3(0.42,4.4,10),Color.WHITE),
-		_solid_box(Vector3(48,2.2,9),Vector3(0.42,4.4,10),Color.WHITE),
-		_solid_box(Vector3(60,2.2,-10),Vector3(12,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(60,2.2,10),Vector3(12,4.4,0.42),Color.WHITE),
-		_solid_box(Vector3(66,2.2,-6.5),Vector3(0.42,4.4,7),Color.WHITE),
-		_solid_box(Vector3(66,2.2,6.5),Vector3(0.42,4.4,7),Color.WHITE)]:
-		segment.material_override = wall_mat
-	# Warm ceiling ribs, rounded pipes and alcove doors give the additional corridor a distinct look.
-	for x in [27.0,33.0,39.0,45.0]:
-		_add_box_child(self,Vector3(x,4.25,0),Vector3(0.18,0.20,7.5),Color(0.24,0.20,0.17))
-		_add_led_strip(Vector3(x,4.05,0),Vector3(0.9,0.07,0.16),Color(0.85,0.49,0.28))
-	_add_pipe_run(Vector3(36,3.72,-3.2),Vector3(22,0.14,0.14),Color(0.31,0.34,0.34))
-	_add_pipe_run(Vector3(36,3.72,3.2),Vector3(22,0.14,0.14),Color(0.31,0.34,0.34))
-	for x in [30.0,42.0]:
-		_add_box_child(self,Vector3(x,1.75,3.68),Vector3(1.55,2.45,0.08),Color(0.16,0.13,0.11))
-		_add_box_child(self,Vector3(x,1.75,3.62),Vector3(1.28,2.17,0.06),Color(0.37,0.27,0.20))
-	# PBR pipework, framed doors and worn wall panels make the extended wing less blocky.
-	var pipe_metal := _material(Color(0.27,0.30,0.31))
-	pipe_metal.metallic = 0.68
-	pipe_metal.roughness = 0.34
-	var trim_wood := _material(Color(0.20,0.105,0.062))
-	trim_wood.roughness = 0.58
-	for x in [51.0,57.0,63.0,69.0]:
-		_add_pipe_run(Vector3(x,3.85,0),Vector3(7.2,0.15,0.15),Color(0.29,0.33,0.34))
-		_add_box_child(self,Vector3(x,4.22,0),Vector3(0.20,0.18,7.4),Color(0.20,0.105,0.062))
-		_add_led_strip(Vector3(x,4.02,0),Vector3(1.1,0.055,0.16),Color(0.82,0.58,0.37))
-	for z in [-8.0,8.0]:
-		for x in [54.0,62.0,70.0]:
-			_add_box_child(self,Vector3(x,1.62,z),Vector3(1.45,2.9,0.12),Color(0.20,0.105,0.062))
-			_add_box_child(self,Vector3(x,1.62,z-signf(z)*0.08),Vector3(1.20,2.64,0.06),Color(0.27,0.30,0.31))
-			_add_box_child(self,Vector3(x+0.39,1.55,z-signf(z)*0.12),Vector3(0.05,0.18,0.05),Color(0.78,0.56,0.25))
-	for x in [52.0,60.0,68.0]:
-		var practical := OmniLight3D.new()
-		practical.position = Vector3(x,3.75,0)
-		practical.light_color = Color(0.80,0.72,0.57) if int(x) % 2 == 0 else Color(0.55,0.68,0.73)
-		practical.light_energy = 0.58
-		practical.omni_range = 8.0
-		practical.shadow_enabled = false
-		add_child(practical)
-	# Ceiling ribs, visible warm fixtures and wall-base wear break up long straight sightlines.
-	for x in [-60.0,-54.0,-48.0,-42.0,-36.0,-30.0]:
-		_add_box_child(self,Vector3(x,4.25,2),Vector3(0.18,0.20,7.4),Color(0.24,0.20,0.17))
-		_add_led_strip(Vector3(x,4.05,2),Vector3(0.9,0.07,0.16),Color(0.88,0.55,0.34))
-	for z in [-8.0,-14.0,-20.0]:
-		_add_box_child(self,Vector3(-52,4.25,z),Vector3(23.5,0.20,0.18),Color(0.24,0.20,0.17))
-		_add_led_strip(Vector3(-52,4.04,z),Vector3(1.0,0.07,0.18),Color(0.80,0.51,0.30))
-	# A recessed utility alcove and service doors provide recognizable landmarks along the route.
-	for x in [-60.0,-52.0,-44.0]:
-		_add_box_child(self,Vector3(x,1.8,5.70),Vector3(1.45,2.5,0.08),Color(0.16,0.13,0.11))
-		_add_box_child(self,Vector3(x,1.8,5.64),Vector3(1.18,2.22,0.06),Color(0.37,0.27,0.20))
-		_add_box_child(self,Vector3(x+0.42,1.8,5.57),Vector3(0.05,0.16,0.06),Color(0.82,0.60,0.22))
-	# Rounded overhead pipes and floor cable channels add shape variation and a less blocky silhouette.
-	_add_pipe_run(Vector3(-52,3.76,-0.8),Vector3(24,0.14,0.14),Color(0.31,0.34,0.34))
-	_add_pipe_run(Vector3(-52,3.54,-0.8),Vector3(24,0.08,0.08),Color(0.20,0.24,0.25))
-	_add_pipe_run(Vector3(-52,3.76,4.8),Vector3(24,0.14,0.14),Color(0.31,0.34,0.34))
-	_add_pipe_run(Vector3(-52,3.54,4.8),Vector3(24,0.08,0.08),Color(0.20,0.24,0.25))
-	for x in [-60.0,-52.0,-44.0]:
-		_add_box_child(self,Vector3(x,0.08,2),Vector3(0.15,0.16,7.2),Color(0.30,0.25,0.20))
-	# Mostrador, escenario y cabinas decorativas; el comedor queda transitable.
-	var counter := _solid_box(Vector3(0, 1.2, -10.2), Vector3(8, 2.4, 1.3), Color.WHITE, true, 2)
-	counter.material_override = wood_mat
-	_solid_box(Vector3(-9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
-	_solid_box(Vector3(9.5, 0.55, -9.5), Vector3(8, 1.1, 2.0), Color(0.23, 0.14, 0.09))
-	# Real CC0 scanned furniture, instantiated at a deliberate dining-room grid.
+	# Polished matching baseboards/cap rails follow each real wall segment and keep all doorways open.
+	var skirting_mat := _material(Color(0.13,0.105,0.083))
+	var caprail_mat := _material(Color(0.19,0.15,0.12))
+	for entry in wall_segments:
+		var wpos: Vector3 = entry[0]
+		var wsz: Vector3 = entry[1]
+		var rail_size := Vector3(wsz.x+0.06,0.16,wsz.z+0.06)
+		for rail_y in [0.12,4.82]:
+			var rail := _add_box_child(self,Vector3(wpos.x,rail_y,wpos.z),rail_size,Color.WHITE)
+			if rail_y < 1.0: rail.material_override = skirting_mat
+			else: rail.material_override = caprail_mat
+	# Stage deck, aligned curtain wall, kitchen windows and prep counter.
+	var stage := _solid_box(Vector3(0,0.38,-11.0),Vector3(17.5,0.76,4.8),Color.WHITE,true,2)
+	stage.material_override = wood_mat
+	for x in [-8.5,-6.8,6.8,8.5]:
+		var curtain := _solid_box(Vector3(x,2.65,-13.45),Vector3(1.35,3.7,0.18),Color(0.24,0.018,0.03),false)
+		curtain.material_override = _material(Color(0.25,0.018,0.028))
+	var backstage_counter := _solid_box(Vector3(0,0.9,-19.0),Vector3(8.0,1.8,1.0),Color(0.38,0.39,0.38),true,2)
+	backstage_counter.material_override = _material(Color(0.28,0.30,0.30))
+	# Original dining room props and two shared low-poly furniture meshes.
+	_solid_box(Vector3(0,0.55,-8.3),Vector3(8.0,1.1,1.0),Color(0.23,0.14,0.09),true)
+	_solid_box(Vector3(-9.5,0.55,-8.3),Vector3(6.0,1.1,1.0),Color(0.23,0.14,0.09),true)
+	_solid_box(Vector3(9.5,0.55,-8.3),Vector3(6.0,1.1,1.0),Color(0.23,0.14,0.09),true)
 	_build_dining_furniture()
 	_build_original_party_props()
-	# Escenario, cocina, almacén y pasillo de servicio; todos los accesos son recorribles.
-	var stage := _solid_box(Vector3(0,0.35,-18.5),Vector3(18,0.7,5.2),Color(0.13,0.08,0.065),true,2)
-	stage.material_override = wood_mat
-	for x in [-7.0,-3.5,0.0,3.5,7.0]:
-		_solid_box(Vector3(x,2.9,-20.7),Vector3(0.22,4.0,0.18),Color(0.28,0.08,0.075),false)
 	_build_original_stage_set()
-	# Cocina trasera con aperturas laterales.
-	_solid_box(Vector3(-15.5,2.1,-12.5),Vector3(17,4.2,0.42),Color(0.28,0.24,0.20))
-	_solid_box(Vector3(15.5,2.1,-12.5),Vector3(17,4.2,0.42),Color(0.28,0.24,0.20))
-	for x in [-20.0,-14.0,14.0,20.0]:
-		var prep := _solid_box(Vector3(x,1,-17),Vector3(4.2,1.8,1.2),Color(0.34,0.37,0.39),true,2)
-		_solid_box(Vector3(x,2.05,-17),Vector3(4.25,0.12,1.25),Color(0.58,0.58,0.53),false)
-		_solid_box(Vector3(x,2.2,-20),Vector3(3.2,0.16,0.45),Color(0.30,0.32,0.33),true,2)
-	# Pasillo de servicio y cuartos laterales con paso desde el comedor.
-	_solid_box(Vector3(18.2,2.1,-3.0),Vector3(0.4,4.2,10),Color(0.32,0.27,0.24))
-	_solid_box(Vector3(18.2,2.1,13.0),Vector3(0.4,4.2,5),Color(0.32,0.27,0.24))
-	_solid_box(Vector3(21,2.1,-8),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
-	_solid_box(Vector3(21,2.1,4),Vector3(5.6,4.2,0.4),Color(0.32,0.27,0.24))
-	_solid_box(Vector3(21,2.1,-1.5),Vector3(0.4,4.2,8.5),Color(0.32,0.27,0.24))
-	for z in [-8.0,-3.0,2.0,7.0]:
-		_solid_box(Vector3(-21.3,1,z),Vector3(1.3,2,1.5),Color(0.10,0.13,0.18),true,2)
-		_add_led_strip(Vector3(-21.3,1.62,z-0.76),Vector3(0.9,0.35,0.05),Color(0.05,0.7,1.0))
-	_add_led_strip(Vector3(0,4.25,-21.55),Vector3(14,0.16,0.08),Color(1.0,0.12,0.08))
-	_add_led_strip(Vector3(0,4.1,-12.15),Vector3(12,0.12,0.08),Color(0.04,0.72,1.0))
-	# Repeated ceiling panels and beams define depth across the much larger room.
-	for z in [-16.0,-9.0,-2.0,5.0,12.0,19.0]:
-		_add_box_child(self,Vector3(0,4.78,z),Vector3(42,0.12,0.32),Color(0.22,0.18,0.14))
-	# Colored wall banners and booth dividers enrich the dining area with few mesh calls.
-	for x in [-18.0,-12.0,12.0,18.0]:
-		_add_box_child(self,Vector3(x,1.55,-12.1),Vector3(2.2,1.1,0.09),Color(0.40,0.075,0.06))
-		_add_led_strip(Vector3(x,2.15,-12.03),Vector3(1.75,0.035,0.03),Color(1.0,0.30,0.07))
-	# Contrasting dado rails and colored booth panels make the dining room read as a place.
-	_add_led_strip(Vector3(0,1.05,21.65),Vector3(32,0.08,0.06),Color(0.95,0.27,0.08))
-	_add_led_strip(Vector3(-23.65,1.05,0),Vector3(0.06,0.08,32),Color(0.95,0.27,0.08))
-	_add_led_strip(Vector3(23.65,1.05,0),Vector3(0.06,0.08,32),Color(0.95,0.27,0.08))
-	for x in [-17.0,-8.5,0.0,8.5,17.0]:
-		# Bright framed menu posters on walls, no extra lights/shadows.
-		_add_box_child(self,Vector3(x,2.65,21.68),Vector3(2.3,1.5,0.06),Color(0.31,0.10,0.055))
-		_add_box_child(self,Vector3(x,2.65,21.60),Vector3(2.0,1.22,0.06),Color(0.87,0.69,0.42))
-	# Distinct kitchen fixtures: oven fronts and cooler doors.
-	for x in [-20.0,-14.0,14.0,20.0]:
-		_add_box_child(self,Vector3(x,0.88,-17.63),Vector3(1.25,0.78,0.04),Color(0.10,0.12,0.14))
-		_add_led_strip(Vector3(x,1.42,-17.61),Vector3(1.0,0.035,0.03),Color(1.0,0.22,0.07))
-	# Iconic two-tone checker trim inspired by the supplied restaurant reference.
-	_add_checker_band(Vector3(0,2.75,21.68),Vector3(45.4,0.36,0.065),28,true)
-	_add_checker_band(Vector3(-23.68,2.75,0),Vector3(0.065,0.36,40.0),25,false)
-	# Party balloons with thin cords at the room corners, low polygon count.
-	_add_balloon_cluster(Vector3(-20.5,0,-18.5))
-	_add_balloon_cluster(Vector3(20.5,0,-18.5))
-	_add_balloon_cluster(Vector3(-20.5,0,18.5))
-	_add_balloon_cluster(Vector3(20.5,0,18.5))
-	# Luces cálidas dispersas y focos de escenario.
-	for p in [Vector3(-16,3.8,-6),Vector3(0,3.8,-6),Vector3(16,3.8,-6),Vector3(-16,3.8,8),Vector3(0,3.8,8),Vector3(16,3.8,8),Vector3(0,3.5,-17)]:
+	# Security office desk and cabinet; wall-supported labels distinguish spaces.
+	var desk := _solid_box(Vector3(0,0.62,23.2),Vector3(5.8,1.24,1.1),Color(0.16,0.14,0.12),true,2)
+	_add_box_child(self,Vector3(0,1.28,23.2),Vector3(5.9,0.10,1.18),Color(0.28,0.25,0.21))
+	_add_box_child(self,Vector3(-6.3,1.35,26.8),Vector3(1.2,2.7,0.7),Color(0.13,0.16,0.17))
+	_add_box_child(self,Vector3(6.3,1.35,26.8),Vector3(1.2,2.7,0.7),Color(0.13,0.16,0.17))
+	# Practical lights spaced to make walls readable; no real-time shadows on Android.
+	for lp in [Vector3(-15,4.55,-3),Vector3(0,4.55,-3),Vector3(15,4.55,-3),Vector3(-15,4.55,8),Vector3(15,4.55,8),Vector3(0,4.55,15),Vector3(0,4.55,23),Vector3(-24,4.55,3),Vector3(24,4.55,3),Vector3(-24,4.55,17),Vector3(24,4.55,17),Vector3(0,4.55,-19)]:
 		var light := OmniLight3D.new()
-		light.position = p
-		light.light_color = Color(1.0,0.63,0.32)
-		light.light_energy = 0.68
-		light.omni_range = 14.0
+		light.position = lp
+		light.light_color = Color(0.77,0.64,0.47)
+		light.light_energy = 0.48
+		light.omni_range = 8.5
 		light.shadow_enabled = false
 		add_child(light)
-	# Neon strips with emissive material + subtle low-cost coloured light.
-	# New emissive LED accents — visible strips only; no extra dynamic lights or shadows.
-	_add_led_strip(Vector3(0,0.77,-16.05),Vector3(16.0,0.055,0.06),Color(0.03,0.86,1.0))
-	_add_led_strip(Vector3(-8.72,1.05,-18.7),Vector3(0.06,0.055,3.6),Color(1.0,0.28,0.035))
-	_add_led_strip(Vector3(8.72,1.05,-18.7),Vector3(0.06,0.055,3.6),Color(1.0,0.28,0.035))
-	_add_led_strip(Vector3(-4.0,4.75,1.5),Vector3(0.08,0.035,27.0),Color(0.02,0.62,0.96))
-	_add_led_strip(Vector3(4.0,4.75,1.5),Vector3(0.08,0.035,27.0),Color(0.92,0.045,0.25))
-	_add_led_strip(Vector3(0,4.74,-18.0),Vector3(12.0,0.035,0.08),Color(0.95,0.48,0.055))
-	_add_led_strip(Vector3(0,4.25,-12.55), Vector3(40,0.12,0.07), Color(0.05,0.88,1.0))
-	_add_led_strip(Vector3(0,3.95,12.55), Vector3(36,0.10,0.06), Color(1.0,0.08,0.36))
-	_add_led_strip(Vector3(-23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.36,0.12,1.0))
-	_add_led_strip(Vector3(23.55,3.5,0), Vector3(0.07,0.10,40), Color(0.05,0.82,0.62))
+	# Built-in LEDs trace the office edges, dining-room trim and stage; filter is independent.
+	for x in [-20.0,-12.0,0.0,12.0,20.0]:
+		_add_led_strip(Vector3(x,3.65,-13.72),Vector3(3.4,0.045,0.06),Color(0.88,0.045,0.055))
+		_add_led_strip(Vector3(x,0.95,11.70),Vector3(4.0,0.055,0.045),Color(0.02,0.60,0.78))
+	for z in [-10.0,0.0,8.0,15.0,23.0]:
+		_add_led_strip(Vector3(-19.72,1.08,z),Vector3(0.055,0.055,5.0),Color(0.90,0.08,0.06))
+		_add_led_strip(Vector3(19.72,1.08,z),Vector3(0.055,0.055,5.0),Color(0.02,0.62,0.80))
+	_add_led_strip(Vector3(-11.72,0.98,24),Vector3(0.06,0.045,8.0),Color(0.95,0.18,0.03))
+	_add_led_strip(Vector3(11.72,0.98,24),Vector3(0.06,0.045,8.0),Color(0.95,0.18,0.03))
+	_add_led_strip(Vector3(0,1.02,18.30),Vector3(7.5,0.05,0.06),Color(0.95,0.12,0.035))
+	_add_led_strip(Vector3(0,1.02,29.52),Vector3(24.0,0.05,0.06),Color(0.96,0.11,0.035))
 	_flush_led_strips()
+	print("ENCLOSED_FNAF_INSPIRED_MAP_READY dining=1 stage=1 back_hall=1 security_office=1 connected_halls=2")
 
 func _build_original_stage_set() -> void:
 	# Layered velvet-like curtains and custom backstage sign, no franchise branding.
 	for x in [-8.5,-6.8,6.8,8.5]:
-		var panel := _solid_box(Vector3(x,2.7,-21.25),Vector3(1.45,3.6,0.20),Color(0.37,0.025,0.045),false)
+		var panel := _solid_box(Vector3(x,2.7,-13.95),Vector3(1.45,3.6,0.20),Color(0.37,0.025,0.045),false)
 		panel.material_override = _material(Color(0.30,0.015,0.025))
 	for x in [-8.8,8.8]:
-		_add_box_child(self,Vector3(x,3.0,-21.1),Vector3(0.3,4.2,0.45),Color(0.68,0.44,0.18))
-	_add_box_child(self,Vector3(0,4.3,-21.2),Vector3(17.2,0.26,0.35),Color(0.55,0.34,0.14))
-	_add_box_child(self,Vector3(0,4.0,-21.0),Vector3(5.8,0.72,0.12),Color(0.11,0.12,0.12))
+		_add_box_child(self,Vector3(x,3.0,-13.8),Vector3(0.3,4.2,0.45),Color(0.68,0.44,0.18))
+	_add_box_child(self,Vector3(0,4.3,-13.8),Vector3(17.2,0.26,0.35),Color(0.55,0.34,0.14))
+	_add_box_child(self,Vector3(0,4.0,-13.72),Vector3(5.8,0.72,0.12),Color(0.11,0.12,0.12))
 	# Lettering is original generic text, not a FNAF logo or protected artwork.
 	var sign := Label3D.new()
 	sign.text = "PARTY STAGE"
 	sign.font_size = 42
 	sign.pixel_size = 0.012
 	sign.modulate = Color(0.91,0.72,0.42)
-	sign.position = Vector3(0,4.0,-20.92)
+	sign.position = Vector3(0,4.0,-13.62)
 	sign.rotation.y = PI
 	add_child(sign)
 
@@ -415,18 +337,18 @@ func _build_original_party_props() -> void:
 	# Hand-painted birthday bunting and star shapes across the stage; bespoke procedural props.
 	for i in range(5):
 		var x := -7.2 + float(i) * 3.6
-		_add_box_child(self,Vector3(x,3.1,-21.63),Vector3(2.65,0.075,0.06),Color(0.19,0.12,0.10))
-		_add_star_prop(Vector3(x,3.55,-21.57),0.32,banner_colors[i % banner_colors.size()])
+		_add_box_child(self,Vector3(x,3.1,-13.82),Vector3(2.65,0.075,0.06),Color(0.19,0.12,0.10))
+		_add_star_prop(Vector3(x,3.55,-13.75),0.32,banner_colors[i % banner_colors.size()])
 	# Old stage monitors, microphone stands and generic animal-mask silhouettes, all original.
 	for side in [-1.0,1.0]:
-		var speaker := _solid_box(Vector3(side * 8.1,1.2,-19.2),Vector3(1.0,2.2,0.75),Color(0.12,0.14,0.15),false)
-		_add_box_child(self,Vector3(side * 8.1,1.2,-18.80),Vector3(0.66,1.45,0.04),Color(0.22,0.24,0.23))
-		_add_cylinder(Vector3(side * 2.8,1.38,-18.0),0.035,2.65,Color(0.38,0.38,0.36),24)
-		_add_sphere(self,Vector3(side * 2.8,2.75,-18.0),Vector3(0.12,0.11,0.12),Color(0.06,0.06,0.06))
+		var speaker := _solid_box(Vector3(side * 8.1,1.2,-11.0),Vector3(1.0,2.2,0.75),Color(0.12,0.14,0.15),false)
+		_add_box_child(self,Vector3(side * 8.1,1.2,-10.6),Vector3(0.66,1.45,0.04),Color(0.22,0.24,0.23))
+		_add_cylinder(Vector3(side * 2.8,1.38,-10.8),0.035,2.65,Color(0.38,0.38,0.36),24)
+		_add_sphere(self,Vector3(side * 2.8,2.75,-10.8),Vector3(0.12,0.11,0.12),Color(0.06,0.06,0.06))
 	# Generic stage mascot heads: distinct simple animal-like silhouettes, not franchise designs.
-	_add_original_mascot_mask(Vector3(-4.8,2.25,-19.0),Color(0.42,0.20,0.12),0)
-	_add_original_mascot_mask(Vector3(0.0,2.25,-19.0),Color(0.20,0.32,0.37),1)
-	_add_original_mascot_mask(Vector3(4.8,2.25,-19.0),Color(0.40,0.35,0.19),2)
+	_add_original_mascot_mask(Vector3(-4.8,2.25,-11.0),Color(0.42,0.20,0.12),0)
+	_add_original_mascot_mask(Vector3(0.0,2.25,-11.0),Color(0.20,0.32,0.37),1)
+	_add_original_mascot_mask(Vector3(4.8,2.25,-11.0),Color(0.40,0.35,0.19),2)
 	# Crumpled party hats and boxed party snacks on selected tables.
 	for i in [0,3,6,9]:
 		var p: Vector3 = [Vector3(-16,0,-3),Vector3(-8,0,-3),Vector3(0,0,-3),Vector3(8,0,-3),Vector3(16,0,-3),Vector3(-16,0,6),Vector3(-8,0,6),Vector3(0,0,6),Vector3(8,0,6),Vector3(16,0,6)][i]
@@ -633,6 +555,7 @@ func _build_animatronic() -> void:
 		print("MIMIC_MODEL_LOADED meshes=%d" % loaded_mesh_count)
 	else:
 		push_error("MIMIC_MODEL_HAS_NO_MESHES")
+	print("AI_ROUTE_FOLLOWER_READY")
 
 func _count_mesh_instances(node: Node) -> int:
 	var count := 1 if node is MeshInstance3D and (node as MeshInstance3D).mesh != null else 0
@@ -698,23 +621,49 @@ func _build_hud() -> void:
 	camera_filter_overlay.material = cctv_material
 	root.add_child(camera_filter_overlay)
 	print("OPTIONAL_CCTV_FILTER_READY")
+	print("CCTV_FILTER_DEFAULT_ON" if camera_filter_enabled else "CCTV_FILTER_DEFAULT_OFF")
+	hud_top_panel = Panel.new()
+	hud_top_panel.name = "SecurityMonitorHeader"
+	hud_top_panel.anchor_left = 0.015
+	hud_top_panel.anchor_right = 0.985
+	hud_top_panel.anchor_top = 0.018
+	hud_top_panel.anchor_bottom = 0.105
+	hud_top_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var header_style := StyleBoxFlat.new()
+	header_style.bg_color = Color(0.008,0.009,0.009,0.77)
+	header_style.border_color = Color(0.46,0.13,0.085,0.76)
+	header_style.set_border_width_all(1)
+	header_style.set_corner_radius_all(3)
+	hud_top_panel.add_theme_stylebox_override("panel",header_style)
+	root.add_child(hud_top_panel)
 	hud = Label.new()
-	hud.text = "PIZZERÍA CERRADA  •  EXPLORA Y SOBREVIVE"
-	hud.anchor_left = 0.02
-	hud.anchor_right = 0.68
-	hud.anchor_top = 0.025
-	hud.anchor_bottom = 0.11
-	hud.add_theme_font_size_override("font_size", 23)
-	hud.add_theme_color_override("font_color", Color(1.0,0.89,0.68))
+	hud.text = "12 AM  •  NOCHE 1"
+	hud.anchor_left = 0.032
+	hud.anchor_right = 0.31
+	hud.anchor_top = 0.024
+	hud.anchor_bottom = 0.098
+	hud.add_theme_font_size_override("font_size", 19)
+	hud.add_theme_color_override("font_color", Color(0.90,0.83,0.69))
 	root.add_child(hud)
+	hud_center_label = Label.new()
+	hud_center_label.text = "CAM 01  •  REC ●"
+	hud_center_label.anchor_left = 0.36
+	hud_center_label.anchor_right = 0.64
+	hud_center_label.anchor_top = 0.024
+	hud_center_label.anchor_bottom = 0.098
+	hud_center_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hud_center_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	hud_center_label.add_theme_font_size_override("font_size",16)
+	hud_center_label.add_theme_color_override("font_color",Color(0.78,0.73,0.63))
+	root.add_child(hud_center_label)
 	threat_label = Label.new()
-	threat_label.anchor_left = 0.70
-	threat_label.anchor_right = 0.98
-	threat_label.anchor_top = 0.025
-	threat_label.anchor_bottom = 0.11
+	threat_label.anchor_left = 0.68
+	threat_label.anchor_right = 0.968
+	threat_label.anchor_top = 0.024
+	threat_label.anchor_bottom = 0.098
 	threat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	threat_label.add_theme_font_size_override("font_size", 21)
-	threat_label.add_theme_color_override("font_color", Color(1.0,0.38,0.28))
+	threat_label.add_theme_font_size_override("font_size", 17)
+	threat_label.add_theme_color_override("font_color", Color(0.95,0.20,0.12))
 	root.add_child(threat_label)
 	stick_radius = 104.0
 	stick_base = Panel.new()
@@ -722,10 +671,10 @@ func _build_hud() -> void:
 	stick_base.size = Vector2(208,208)
 	stick_base.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var base_style := StyleBoxFlat.new()
-	base_style.bg_color = Color(0.04,0.055,0.07,0.42)
+	base_style.bg_color = Color(0.015,0.018,0.018,0.72)
 	base_style.set_corner_radius_all(96)
-	base_style.border_color = Color(0.82,0.86,0.9,0.82)
-	base_style.set_border_width_all(3)
+	base_style.border_color = Color(0.56,0.15,0.10,0.84)
+	base_style.set_border_width_all(2)
 	base_style.shadow_color = Color(0,0,0,0.4)
 	base_style.shadow_size = 8
 	stick_base.add_theme_stylebox_override("panel",base_style)
@@ -735,7 +684,7 @@ func _build_hud() -> void:
 	stick_knob.size = Vector2(84,84)
 	stick_knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var knob_style := StyleBoxFlat.new()
-	knob_style.bg_color = Color(0.83,0.87,0.9,0.9)
+	knob_style.bg_color = Color(0.72,0.66,0.54,0.96)
 	knob_style.set_corner_radius_all(42)
 	knob_style.border_color = Color(1,1,1,0.85)
 	knob_style.set_border_width_all(2)
@@ -744,9 +693,9 @@ func _build_hud() -> void:
 	var initial_size := get_viewport().get_visible_rect().size
 	stick_center = Vector2(156,initial_size.y - 156)
 	_update_stick_visual()
-	camera_filter_button = _make_button(root,"CCTV",Vector2(-358,-145),Vector2(104,62))
+	camera_filter_button = _make_button(root,"CAM 01 ON",Vector2(-358,-145),Vector2(104,62))
 	camera_filter_button.anchor_left = 1.0; camera_filter_button.anchor_right = 1.0
-	camera_filter_button.tooltip_text = "Activar o apagar filtro de cámara de seguridad"
+	camera_filter_button.tooltip_text = "El filtro de cámara de seguridad inicia activo"
 	camera_filter_button.pressed.connect(_toggle_cctv_filter)
 	var light_button := _make_button(root,"LINTERNA",Vector2(-244,-145),Vector2(112,62))
 	light_button.anchor_left = 1.0; light_button.anchor_right = 1.0
@@ -768,12 +717,12 @@ func _make_button(root: Control, text: String, pos: Vector2, size: Vector2) -> B
 	b.size = size
 	b.anchor_top = 1.0
 	b.anchor_bottom = 1.0
-	b.add_theme_font_size_override("font_size",17)
+	b.add_theme_font_size_override("font_size",15)
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06,0.07,0.075,0.8)
-	style.border_color = Color(0.65,0.45,0.25,0.9)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(12)
+	style.bg_color = Color(0.012,0.014,0.014,0.90)
+	style.border_color = Color(0.56,0.15,0.10,0.90)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
 	b.add_theme_stylebox_override("normal",style)
 	b.add_theme_stylebox_override("pressed",style)
 	root.add_child(b)
@@ -908,6 +857,9 @@ func _start_game() -> void:
 	game_started = true
 	hud_layer.visible = true
 	lobby_layer.queue_free()
+	camera_filter_enabled = true
+	camera_filter_overlay.visible = true
+	if is_instance_valid(camera_filter_button): camera_filter_button.text = "CAM 01 ON"
 	ambience_player.play()
 	horror_player.play()
 	voice_timer = 22.0
@@ -984,31 +936,50 @@ func _process(delta: float) -> void:
 				footstep_player.pitch_scale = randf_range(0.96,1.04)
 				footstep_player.play()
 			walk_timer = (0.40 if sprinting else 0.57) / (1.0 + minf(elapsed / 150.0,0.35))
-	# El animatrónico te rastrea directamente por el comedor y acelera con el tiempo.
+	# The Mimic uses the connected hallway/doorway route map, not a straight-line chase through walls.
+	ai_repath_timer -= delta
+	if ai_repath_timer <= 0.0 or ai_route_points.is_empty():
+		_build_ai_route()
+		ai_repath_timer = 0.55
+	while ai_route_index < ai_route_points.size() and animatronic.global_position.distance_to(ai_route_points[ai_route_index]) < 1.0:
+		ai_route_index += 1
+	var goal: Vector3 = player.global_position
+	if ai_route_index < ai_route_points.size(): goal = ai_route_points[ai_route_index]
+	var to_goal := goal - animatronic.global_position
+	to_goal.y = 0.0
+	var goal_distance := to_goal.length()
 	var to_player := player.global_position - animatronic.global_position
-	to_player.y = 0
+	to_player.y = 0.0
 	var distance := to_player.length()
-	var chase_speed := 1.05 + minf(elapsed / 130.0,1.0) * 0.85
-	if distance > 0.05:
-		var direction := to_player.normalized()
-		animatronic.velocity.x = direction.x * chase_speed
-		animatronic.velocity.z = direction.z * chase_speed
-		animatronic.velocity.y = -0.25
+	if goal_distance > 0.10:
+		var desired := _ai_steer_around_obstacles(to_goal.normalized())
+		var chase_speed := 1.48 + minf(elapsed/110.0,0.75)
+		animatronic.velocity.x = desired.x * chase_speed
+		animatronic.velocity.z = desired.z * chase_speed
+		animatronic.velocity.y = -0.2
 		animatronic.move_and_slide()
-		animatronic.look_at(Vector3(player.global_position.x,animatronic.global_position.y,player.global_position.z),Vector3.UP)
+		var moved := animatronic.get_position_delta().length()
+		if moved < 0.018 and goal_distance > 1.2:
+			ai_stuck_timer += delta
+		else:
+			ai_stuck_timer = maxf(0.0,ai_stuck_timer-delta*2.0)
+		if ai_stuck_timer > 0.72:
+			ai_stuck_timer = 0.0
+			ai_steer_sign *= -1.0
+			ai_repath_timer = 0.0
+		animatronic.look_at(Vector3(animatronic.global_position.x+desired.x,animatronic.global_position.y,animatronic.global_position.z+desired.z),Vector3.UP)
 		if anim_player:
 			var wanted := _find_animation_name(anim_player,"RunA")
 			var cycle_length := 0.62
-			if distance > 8.0:
+			if distance > 9.0:
 				wanted = _find_animation_name(anim_player,"Walk_SK")
 				cycle_length = 1.29
 			if wanted != "" and anim_player.current_animation != wanted:
 				anim_player.play(wanted,0.18)
 				anim_step_timer = 0.0
-			anim_player.speed_scale = 1.0 + minf(elapsed/150.0,0.35)
+			anim_player.speed_scale = 1.0 + minf(elapsed/150.0,0.25)
 			anim_step_timer -= delta
-			if anim_step_timer <= 0.0 and distance < 24.0 and animatronic.velocity.length() > 0.35:
-				# Two alternating channels align the stomp rhythm to the imported clip.
+			if anim_step_timer <= 0.0 and distance < 24.0 and moved > 0.10:
 				var animation_interval := (cycle_length * 0.5) / maxf(anim_player.speed_scale,0.1)
 				stomp_player = robot_step_b if stomp_player == robot_step_a else robot_step_a
 				if not stomp_player.playing:
@@ -1038,22 +1009,113 @@ func _process(delta: float) -> void:
 		voice_timer = randf_range(20.0,32.0)
 	if distance < 1.7:
 		_caught_player()
-	threat_label.text = "¡TE ESTÁ BUSCANDO!" if distance < 8.0 else "SE OYEN PASOS LEJANOS"
-	hud.text = "PIZZERÍA CERRADA  •  %02d:%02d AM" % [12 + int(elapsed/60.0)%6, int(elapsed)%60]
+	threat_label.text = "⚠ MOVIMIENTO CERCANO" if distance < 8.0 else "SIN MOVIMIENTO"
+	hud.text = "%02d AM  •  TURNO 01" % [12 + int(elapsed/60.0)%6]
 	if overlay.color.a > 0.0:
 		var c := overlay.color
 		c.a = maxf(0.0,c.a - delta*0.38)
 		overlay.color = c
 
+func _build_ai_route() -> void:
+	ai_route_points.clear()
+	ai_route_index = 0
+	var p := player.global_position
+	var a := animatronic.global_position
+	var target_west := p.x < -20.0
+	var target_east := p.x > 20.0
+	var target_north := p.z < -14.0
+	var target_office := p.z > 18.0 and absf(p.x) < 12.0
+	var a_west := a.x < -20.0
+	var a_east := a.x > 20.0
+	var a_north := a.z < -14.0
+	var a_office := a.z > 18.0 and absf(a.x) < 12.0
+	if target_west:
+		if a_east:
+			ai_route_points.append_array([Vector3(19,0,1.5),Vector3(4,0,1.5),Vector3(-18.5,0,1.5)])
+		elif a_north:
+			ai_route_points.append_array([Vector3(0,0,-12),Vector3(4,0,-8),Vector3(4,0,1.5),Vector3(-18.5,0,1.5)])
+		elif a_office:
+			ai_route_points.append_array([Vector3(-10,0,24),Vector3(-18,0,24),Vector3(-24,0,18)])
+		elif not a_west:
+			ai_route_points.append(Vector3(-18.5,0,1.5))
+	elif target_east:
+		if a_west:
+			ai_route_points.append_array([Vector3(-19,0,1.5),Vector3(4,0,1.5),Vector3(18.5,0,1.5)])
+		elif a_north:
+			ai_route_points.append_array([Vector3(0,0,-12),Vector3(4,0,-8),Vector3(4,0,1.5),Vector3(18.5,0,1.5)])
+		elif a_office:
+			ai_route_points.append_array([Vector3(10,0,24),Vector3(18,0,24),Vector3(24,0,18)])
+		elif not a_east:
+			ai_route_points.append(Vector3(18.5,0,1.5))
+	elif target_north:
+		if a_west:
+			ai_route_points.append_array([Vector3(-24,0,2),Vector3(-18,0,1.5),Vector3(4,0,1.5),Vector3(4,0,-8),Vector3(0,0,-12)])
+		elif a_east:
+			ai_route_points.append_array([Vector3(24,0,2),Vector3(18,0,1.5),Vector3(4,0,1.5),Vector3(4,0,-8),Vector3(0,0,-12)])
+		elif a_office:
+			ai_route_points.append_array([Vector3(0,0,15),Vector3(0,0,10),Vector3(4,0,1.5),Vector3(4,0,-8),Vector3(0,0,-12)])
+		elif not a_north:
+			ai_route_points.append_array([Vector3(4,0,-8),Vector3(0,0,-12)])
+	elif target_office:
+		if a_west:
+			ai_route_points.append_array([Vector3(-24,0,18),Vector3(-18,0,24),Vector3(-10,0,24),Vector3(0,0,24)])
+		elif a_east:
+			ai_route_points.append_array([Vector3(24,0,18),Vector3(18,0,24),Vector3(10,0,24),Vector3(0,0,24)])
+		elif a_north:
+			ai_route_points.append_array([Vector3(0,0,-12),Vector3(4,0,-8),Vector3(4,0,1.5),Vector3(0,0,10),Vector3(0,0,15),Vector3(0,0,20)])
+		elif not a_office:
+			ai_route_points.append_array([Vector3(0,0,10),Vector3(0,0,15),Vector3(0,0,20)])
+	else:
+		if a_west: ai_route_points.append_array([Vector3(-18.5,0,1.5),Vector3(4,0,1.5)])
+		elif a_east: ai_route_points.append_array([Vector3(18.5,0,1.5),Vector3(4,0,1.5)])
+		elif a_north: ai_route_points.append_array([Vector3(0,0,-12),Vector3(4,0,-8),Vector3(4,0,1.5)])
+		elif a_office: ai_route_points.append_array([Vector3(0,0,15),Vector3(0,0,10),Vector3(4,0,1.5)])
+	if not ai_route_points.is_empty():
+		var nearest_index := 0
+		var nearest_distance := INF
+		for i in range(ai_route_points.size()):
+			var candidate_distance := animatronic.global_position.distance_to(ai_route_points[i])
+			if candidate_distance < nearest_distance:
+				nearest_distance = candidate_distance
+				nearest_index = i
+		ai_route_index = nearest_index
+		while ai_route_index < ai_route_points.size() and animatronic.global_position.distance_to(ai_route_points[ai_route_index]) < 1.15:
+			ai_route_index += 1
+
+func _ai_steer_around_obstacles(direction: Vector3) -> Vector3:
+	var space := get_world_3d().direct_space_state
+	var origin := animatronic.global_position + Vector3(0,1.10,0)
+	var forward_end := origin + direction * 1.55
+	var query := PhysicsRayQueryParameters3D.create(origin,forward_end,1,[animatronic.get_rid(),player.get_rid()])
+	query.collide_with_areas = false
+	if space.intersect_ray(query).is_empty(): return direction
+	var left := Vector3(-direction.z,0,direction.x) * ai_steer_sign
+	var right := -left
+	var left_end := origin + (direction*0.32+left*0.95).normalized()*1.45
+	var right_end := origin + (direction*0.32+right*0.95).normalized()*1.45
+	var left_query := PhysicsRayQueryParameters3D.create(origin,left_end,1,[animatronic.get_rid(),player.get_rid()])
+	var right_query := PhysicsRayQueryParameters3D.create(origin,right_end,1,[animatronic.get_rid(),player.get_rid()])
+	left_query.collide_with_areas = false
+	right_query.collide_with_areas = false
+	var left_blocked := not space.intersect_ray(left_query).is_empty()
+	var right_blocked := not space.intersect_ray(right_query).is_empty()
+	if left_blocked and right_blocked:
+		ai_steer_sign *= -1.0
+		return (direction*0.35+right*0.94).normalized()
+	if left_blocked: return (direction*0.40+right*0.92).normalized()
+	if right_blocked: return (direction*0.40+left*0.92).normalized()
+	return (direction*0.25+(right if ai_steer_sign > 0.0 else left)*0.97).normalized()
+
+
 func _toggle_cctv_filter() -> void:
 	camera_filter_enabled = not camera_filter_enabled
 	if is_instance_valid(camera_filter_overlay): camera_filter_overlay.visible = camera_filter_enabled
 	if is_instance_valid(camera_filter_button):
-		camera_filter_button.text = "CCTV ON" if camera_filter_enabled else "CCTV"
+		camera_filter_button.text = "CAM 01 ON" if camera_filter_enabled else "CAM 01"
 	if is_instance_valid(threat_label) and camera_filter_enabled:
 		threat_label.text = "CAM 01  •  REC ●"
 	if is_instance_valid(threat_label) and not camera_filter_enabled:
-		threat_label.text = "SE OYEN PASOS LEJANOS"
+		threat_label.text = "SIN MOVIMIENTO"
 
 func _toggle_flashlight() -> void:
 	lamp_on = not lamp_on
